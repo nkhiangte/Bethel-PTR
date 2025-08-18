@@ -200,9 +200,17 @@ const saveUsers = (users: User[]) => {
 export const login = async (phone: string, password: string): Promise<{ token: string }> => {
     await simulateDelay();
     const users = getUsers();
-    const user = users.find(u => u.phone === phone && u.passwordHash === password);
-    if (user) {
+    const userIndex = users.findIndex(u => u.phone === phone && u.passwordHash === password);
+
+    if (userIndex > -1) {
+        const user = users[userIndex];
         const token = `mock-token-${user.id}-${Date.now()}`;
+        
+        // Invalidate other sessions by setting a new session token for the user
+        users[userIndex].sessionToken = token;
+        saveUsers(users);
+
+        // Set the token for the current session
         localStorage.setItem(AUTH_TOKEN_KEY, token);
         return { token };
     } else {
@@ -227,18 +235,61 @@ export const register = async (name: string, phone: string, password: string): P
     return newUser;
 };
 
-export const requestPasswordReset = async (phone: string): Promise<void> => {
+export const requestPasswordReset = async (phone: string): Promise<string | null> => {
     await simulateDelay();
     const users = getUsers();
-    if (users.some(u => u.phone === phone)) {
-        console.log(`Password reset requested for ${phone}. In a real app, an SMS would be sent.`);
+    const user = users.find(u => u.phone === phone);
+    if (user) {
+        // For this mock app, we'll return the password.
+        // In a real app, this is a major security vulnerability.
+        return user.passwordHash;
     }
+    return null; // User not found
 };
 
 export const checkAuth = (): boolean => {
-    return localStorage.getItem(AUTH_TOKEN_KEY) !== null;
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+        return false;
+    }
+
+    try {
+        const userId = token.split('-')[2];
+        if (!userId) return false;
+
+        const users = getUsers();
+        const user = users.find(u => u.id === userId);
+
+        if (user && user.sessionToken === token) {
+            return true;
+        }
+
+        // If tokens don't match, it means a newer session exists.
+        // Clean up the invalid local token.
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        return false;
+    } catch (e) {
+        // Handle potential error if token format is unexpected
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        return false;
+    }
 };
 
 export const logout = () => {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (token) {
+        try {
+            const userId = token.split('-')[2];
+            const users = getUsers();
+            const userIndex = users.findIndex(u => u.id === userId);
+            if (userIndex > -1) {
+                // Clear the session token from the user's record
+                delete users[userIndex].sessionToken;
+                saveUsers(users);
+            }
+        } catch (e) {
+            console.error("Error during logout token processing:", e);
+        }
+    }
     localStorage.removeItem(AUTH_TOKEN_KEY);
 };

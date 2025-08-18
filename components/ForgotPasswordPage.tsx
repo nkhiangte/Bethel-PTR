@@ -14,8 +14,12 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSwitch
         if (phone.trim()) {
             setIsLoading(true);
             try {
-                await api.requestPasswordReset(phone);
-                alert('If an account with that phone number exists, a password reset link will be sent.');
+                const password = await api.requestPasswordReset(phone.trim());
+                if (password) {
+                    alert(`Password Recovery (Demonstration Only):\n\nYour password is: ${password}\n\nThis is for demonstration and should NEVER be done in a real application. You can now use this password to log in.`);
+                } else {
+                    alert('If an account with that phone number exists, password recovery has been initiated. (For this demo, no account was found with that number).');
+                }
                 onSwitchToLogin();
             } catch (err: any) {
                 alert(err.message || 'An error occurred.');
