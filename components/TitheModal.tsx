@@ -1,0 +1,153 @@
+import React, { useState, useEffect, useRef } from 'react';
+import type { Family, Tithe } from '../types.ts';
+
+interface TitheModalProps {
+    family: Family;
+    onClose: () => void;
+    onSave: (familyId: string, newTithe: Tithe) => void;
+}
+
+export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave }) => {
+    const [tithe, setTithe] = useState<Tithe>({ ...family.tithe });
+
+    const pathianRamRef = useRef<HTMLInputElement>(null);
+    const ramtharRef = useRef<HTMLInputElement>(null);
+    const tualchhungRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        pathianRamRef.current?.focus();
+        pathianRamRef.current?.select();
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setTithe(prev => ({
+            ...prev,
+            [name]: parseFloat(value) || 0
+        }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(family.id, tithe);
+    };
+
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key !== 'Enter') return;
+        
+        e.preventDefault();
+        const targetId = e.currentTarget.id;
+
+        if (targetId === 'pathianRam') {
+            ramtharRef.current?.focus();
+            ramtharRef.current?.select();
+        } else if (targetId === 'ramthar') {
+            tualchhungRef.current?.focus();
+            tualchhungRef.current?.select();
+        } else if (targetId === 'tualchhung') {
+            onSave(family.id, tithe);
+        }
+    };
+
+    return (
+        <div 
+            className="fixed inset-0 bg-slate-900 bg-opacity-50 z-50 flex justify-center items-center"
+            aria-modal="true"
+            role="dialog"
+            onClick={onClose}
+        >
+            <div 
+                className="bg-sky-50 rounded-2xl shadow-2xl w-full max-w-md m-4 p-8 transform transition-all"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-800">Enter Tithe For</h2>
+                        <p className="text-amber-600 font-semibold">{family.name}</p>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1" aria-label="Close modal">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label htmlFor="pathianRam" className="block text-sm font-medium text-slate-700 mb-2">
+                            Pathian Ram
+                        </label>
+                        <input
+                            ref={pathianRamRef}
+                            id="pathianRam"
+                            name="pathianRam"
+                            type="number"
+                            value={tithe.pathianRam === 0 ? '' : tithe.pathianRam}
+                            onChange={handleInputChange}
+                            onKeyDown={handleInputKeyDown}
+                            min="0"
+                            placeholder="0"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black"
+                        />
+                    </div>
+                     <div>
+                        <label htmlFor="ramthar" className="block text-sm font-medium text-slate-700 mb-2">
+                            Ramthar
+                        </label>
+                        <input
+                            ref={ramtharRef}
+                            id="ramthar"
+                            name="ramthar"
+                            type="number"
+                            value={tithe.ramthar === 0 ? '' : tithe.ramthar}
+                            onChange={handleInputChange}
+                            onKeyDown={handleInputKeyDown}
+                            min="0"
+                            placeholder="0"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black"
+                        />
+                    </div>
+                     <div>
+                        <label htmlFor="tualchhung" className="block text-sm font-medium text-slate-700 mb-2">
+                            Tualchhung
+                        </label>
+                        <input
+                            ref={tualchhungRef}
+                            id="tualchhung"
+                            name="tualchhung"
+                            type="number"
+                            value={tithe.tualchhung === 0 ? '' : tithe.tualchhung}
+                            onChange={handleInputChange}
+                            onKeyDown={handleInputKeyDown}
+                            min="0"
+                            placeholder="0"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black"
+                        />
+                    </div>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4 pt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="w-full sm:w-auto bg-sky-100 text-slate-700 font-semibold px-6 py-3 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="w-full sm:w-auto bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};

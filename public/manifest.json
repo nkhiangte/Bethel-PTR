@@ -1,0 +1,24 @@
+{
+  "name": "Bethel PTR",
+  "short_name": "BethelPTR",
+  "description": "An application for calculating and tracking tithes given by families in a church.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#e0f2fe",
+  "theme_color": "#0c4a6e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
