@@ -63,15 +63,15 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
                             />
                         </div>
                          <div>
-                            <label htmlFor="phone-number-reg" className="sr-only">Phone Number</label>
+                            <label htmlFor="phone-number-reg" className="sr-only">Username / Phone</label>
                             <input
                                 id="phone-number-reg"
                                 name="phone"
-                                type="tel"
-                                autoComplete="tel"
+                                type="text"
+                                autoComplete="username"
                                 required
                                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm bg-sky-100"
-                                placeholder="Phone Number"
+                                placeholder="Username / Phone"
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 disabled={isLoading}

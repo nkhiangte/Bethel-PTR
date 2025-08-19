@@ -8,6 +8,7 @@ interface TitheRowProps {
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: Family) => void;
+  onClearTithe: (familyId: string) => void;
   formatCurrency: (value: number) => string;
 }
 
@@ -60,7 +61,8 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     onRemoveFamily, 
     onUpdateFamilyName,
     onUpdateIpSerialNo,
-    onOpenTitheModal, 
+    onOpenTitheModal,
+    onClearTithe, 
     formatCurrency 
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -139,6 +141,10 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     }
   }
 
+  const handleClearTithes = () => {
+    onClearTithe(family.id);
+  };
+
   const handleTitheInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, fromCategory: TitheCategory) => {
     if (e.key !== 'Enter') return;
     
@@ -180,12 +186,22 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                 className="w-full px-3 py-2 bg-sky-100 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-black"
             />
         ) : (
-            <button 
-              onClick={() => onOpenTitheModal(family)}
-              className="text-sm font-medium text-black text-left hover:text-amber-600 transition-colors"
-            >
-              {family.name}
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => onOpenTitheModal(family)}
+                className="text-sm font-medium text-black text-left hover:text-amber-600 transition-colors"
+              >
+                {family.name}
+              </button>
+              <button
+                onClick={handleClearTithes}
+                className="text-slate-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                aria-label={`Clear all tithe entries for ${family.name}`}
+                title="Clear all tithe entries for this family"
+              >
+                <CancelIcon className="w-4 h-4" />
+              </button>
+            </div>
         )}
       </td>
       <td className="px-2 py-4 sm:px-6 whitespace-nowrap">

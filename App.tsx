@@ -258,6 +258,25 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
 
     handleCloseTitheModal();
   }, [selectedYear, selectedMonth, selectedUpaBial]);
+
+  const handleClearTithe = useCallback((familyId: string) => {
+    if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
+
+    const newTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
+
+    setFamilies(prevFamilies => {
+        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f);
+        
+        setError(null);
+        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe })
+            .catch(() => {
+                setError("Failed to clear tithe details. Reverting.");
+                setFamilies(prevFamilies);
+            });
+
+        return newFamilies;
+    });
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
   
   const handleBackFromTitheTable = useCallback(() => {
     setSelectedMonth(null);
@@ -418,6 +437,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                     onUpdateFamilyName={handleUpdateFamilyName}
                     onUpdateIpSerialNo={handleUpdateIpSerialNo}
                     onOpenTitheModal={handleOpenTitheModal}
+                    onClearTithe={handleClearTithe}
                 />
             </div>
         </>

@@ -45,15 +45,15 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSwitch
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div>
-                         <label htmlFor="phone-number-forgot" className="sr-only">Phone Number</label>
+                         <label htmlFor="phone-number-forgot" className="sr-only">Username / Phone</label>
                         <input
                             id="phone-number-forgot"
                             name="phone"
-                            type="tel"
-                            autoComplete="tel"
+                            type="text"
+                            autoComplete="username"
                             required
                             className="appearance-none rounded-md relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm bg-sky-100"
-                            placeholder="Phone Number"
+                            placeholder="Username / Phone"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                             disabled={isLoading}
