@@ -3,10 +3,10 @@ import React from 'react';
 
 interface UpaBialSelectionProps {
   upaBials: string[];
-  year: number;
-  month: string;
+  year?: number;
+  month?: string;
   onSelectBial: (bial: string) => void;
-  onBack: () => void;
+  onBack?: () => void;
   onGoToDashboard: () => void;
 }
 
@@ -15,11 +15,15 @@ export const UpaBialSelection: React.FC<UpaBialSelectionProps> = ({ upaBials, ye
     <div>
       <div className="flex items-center justify-between mb-8">
             <div className="flex items-center">
-                <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    <span className="sr-only">Back to Month Selection</span>
-                </button>
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Select Upa Bial for {month} {year}</h2>
+                {onBack && (
+                    <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                        <span className="sr-only">Back to Previous Selection</span>
+                    </button>
+                )}
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">
+                    {year && month ? `Select Upa Bial for ${month} ${year}` : 'Select an Upa Bial to Begin'}
+                </h2>
             </div>
              <button
                 onClick={onGoToDashboard}

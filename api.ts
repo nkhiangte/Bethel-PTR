@@ -1,6 +1,3 @@
-
-
-
 import type { YearlyData, Family, Tithe, AggregateReportData, BialTotal, User } from './types.ts';
 
 // --- CONFIGURATION ---
@@ -797,30 +794,60 @@ export const fetchYearlyReport = async (year: number): Promise<AggregateReportDa
 
 const getUsers = (): User[] => {
     try {
-        const users = localStorage.getItem(USERS_DB_KEY);
-        // Add a default user if none exist
-        if (!users) {
-            // NOTE: In a real app, never store plain text passwords. This is a mock.
-            const defaultUsers: User[] = [
-                { id: '1', name: 'Admin', phone: 'admin', passwordHash: 'admin', assignedBial: null }
-            ];
+        const usersJson = localStorage.getItem(USERS_DB_KEY);
+        let users: User[] = usersJson ? JSON.parse(usersJson) : [];
+        let hasChanges = !usersJson;
 
-            for (let i = 1; i <= 13; i++) {
-                defaultUsers.push({
-                    id: `bial-${i}`,
-                    name: `Upa Bial ${i} Manager`,
-                    phone: `bial${i}`,
-                    passwordHash: `bial${i}`,
-                    assignedBial: `Upa Bial ${i}`
-                });
-            }
-
-            localStorage.setItem(USERS_DB_KEY, JSON.stringify(defaultUsers));
-            return defaultUsers;
+        // Ensure admin user exists and has correct properties
+        let adminUser = users.find(u => u.phone === 'admin');
+        if (!adminUser) {
+            users.push({ id: '1', name: 'Admin', phone: 'admin', passwordHash: 'admin', assignedBial: null });
+            hasChanges = true;
+        } else if (adminUser.assignedBial !== null) { // Data correction
+             adminUser.assignedBial = null;
+             hasChanges = true;
         }
-        return JSON.parse(users);
+
+        // Ensure bial manager users exist
+        for (let i = 1; i <= 13; i++) {
+            const bialPhone = `bial${i}`;
+            const bialName = `Upa Bial ${i}`;
+            if (!users.find(u => u.phone === bialPhone)) {
+                users.push({
+                    id: `bial-${i}`,
+                    name: `${bialName} Manager`,
+                    phone: bialPhone,
+                    passwordHash: bialPhone,
+                    assignedBial: bialName
+                });
+                hasChanges = true;
+            }
+        }
+        
+        if(hasChanges) {
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
+        }
+        
+        return users;
+
     } catch (error) {
-        return [];
+        console.error("Error managing users database, resetting to defaults.", error);
+        // If parsing fails or something else goes wrong, reset to a known good state.
+        const defaultUsers: User[] = [
+            { id: '1', name: 'Admin', phone: 'admin', passwordHash: 'admin', assignedBial: null }
+        ];
+        for (let i = 1; i <= 13; i++) {
+            const bialName = `Upa Bial ${i}`;
+            defaultUsers.push({
+                id: `bial-${i}`,
+                name: `${bialName} Manager`,
+                phone: `bial${i}`,
+                passwordHash: `bial${i}`,
+                assignedBial: bialName
+            });
+        }
+        localStorage.setItem(USERS_DB_KEY, JSON.stringify(defaultUsers));
+        return defaultUsers;
     }
 };
 

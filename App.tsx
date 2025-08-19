@@ -47,20 +47,23 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   const clearSelections = useCallback(() => {
     setSelectedYear(null);
     setSelectedMonth(null);
-    setSelectedUpaBial(null);
+    // For restricted users, keep their bial selected
+    if (!assignedBial) {
+        setSelectedUpaBial(null);
+    }
     setFamilies([]);
     setMonthlyReportData(null);
     setYearlyReportData(null);
     setView('entry');
     setError(null);
-  }, []);
+  }, [assignedBial]);
 
-  // Effect to auto-select bial for restricted users
+  // Effect to auto-select bial for restricted users on login
   useEffect(() => {
-    if (assignedBial && selectedMonth && !selectedUpaBial) {
+    if (assignedBial) {
         setSelectedUpaBial(assignedBial);
     }
-  }, [assignedBial, selectedMonth, selectedUpaBial]);
+  }, [assignedBial]);
 
 
   // Effect to fetch families when selection is complete
@@ -79,6 +82,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         }
       };
       fetchFam();
+    } else {
+        setFamilies([]);
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
   
@@ -255,11 +260,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   }, [selectedYear, selectedMonth, selectedUpaBial]);
   
   const handleBackFromTitheTable = useCallback(() => {
-    if (assignedBial) {
-        setSelectedMonth(null);
-    }
-    setSelectedUpaBial(null);
-  }, [assignedBial]);
+    setSelectedMonth(null);
+  }, []);
 
 
   const renderContent = () => {
@@ -296,35 +298,56 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         return null;
     }
     
-    if (!selectedYear) {
-        return <YearSelection years={YEARS} onSelectYear={setSelectedYear} />;
-    }
-    
-    if (!selectedMonth) {
-        return <MonthSelection 
-                    months={MONTHS} 
-                    year={selectedYear} 
-                    onSelectMonth={setSelectedMonth} 
-                    onBack={() => setSelectedYear(null)}
-                    onViewYearlyReport={() => setView('yearlyReport')}
-                />;
-    }
-
-    if (!selectedUpaBial) {
-        if (assignedBial) {
-            // This should only show for a moment while the effect sets the state.
+    // Admin Flow
+    if (!assignedBial) {
+        if (!selectedUpaBial) {
+            return <UpaBialSelection 
+                        upaBials={UPA_BIALS}
+                        onSelectBial={setSelectedUpaBial}
+                        onGoToDashboard={clearSelections}
+                    />;
+        }
+        if (!selectedYear) {
+            return <YearSelection 
+                        years={YEARS} 
+                        onSelectYear={setSelectedYear} 
+                        onBack={() => setSelectedUpaBial(null)}
+                    />;
+        }
+        if (!selectedMonth) {
+            return <MonthSelection
+                        months={MONTHS} 
+                        year={selectedYear} 
+                        onSelectMonth={setSelectedMonth} 
+                        onBack={() => setSelectedYear(null)}
+                        onViewYearlyReport={() => setView('yearlyReport')}
+                        onGoToDashboard={clearSelections}
+                    />;
+        }
+    } 
+    // Restricted User Flow
+    else {
+        if (!selectedUpaBial) {
             return <LoadingSpinner message={`Loading your dashboard for ${assignedBial}...`} />;
         }
-        // Only admins see this selection screen
-        return <UpaBialSelection 
-                    upaBials={UPA_BIALS} 
-                    year={selectedYear} 
-                    month={selectedMonth} 
-                    onSelectBial={setSelectedUpaBial} 
-                    onBack={() => setSelectedMonth(null)} 
-                    onGoToDashboard={clearSelections}
-                />;
+        if (!selectedYear) {
+            return <YearSelection 
+                        years={YEARS} 
+                        onSelectYear={setSelectedYear} 
+                    />;
+        }
+        if (!selectedMonth) {
+            return <MonthSelection 
+                        months={MONTHS} 
+                        year={selectedYear} 
+                        onSelectMonth={setSelectedMonth} 
+                        onBack={() => setSelectedYear(null)}
+                        onViewYearlyReport={() => setView('yearlyReport')}
+                        onGoToDashboard={clearSelections}
+                    />;
+        }
     }
+
 
     // Tithe Entry View
     return (
@@ -337,20 +360,25 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                     </button>
                     <div className="text-sm sm:text-base text-slate-600">
                         <span
-                            className="cursor-pointer hover:underline"
-                            onClick={clearSelections}
+                            className={!assignedBial ? "cursor-pointer hover:underline" : ""}
+                            onClick={() => {
+                                if (!assignedBial) {
+                                    setSelectedYear(null);
+                                    setSelectedMonth(null);
+                                }
+                            }}
                         >
-                            {selectedYear}
+                            {selectedUpaBial}
                         </span>
                         <span className="mx-1 sm:mx-2">/</span>
                         <span
                             className="cursor-pointer hover:underline"
-                            onClick={() => { setSelectedMonth(null); setSelectedUpaBial(null); setView('entry'); }}
+                            onClick={() => { setSelectedMonth(null); setView('entry'); }}
                         >
-                            {selectedMonth}
+                            {selectedYear}
                         </span>
                         <span className="mx-1 sm:mx-2">/</span>
-                        <span className="font-bold text-slate-800">{selectedUpaBial}</span>
+                        <span className="font-bold text-slate-800">{selectedMonth}</span>
                     </div>
                 </div>
                  <button 
