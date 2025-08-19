@@ -1,5 +1,8 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { utils, writeFile } from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { AddFamilyForm } from './components/AddFamilyForm.tsx';
 import { Header } from './components/Header.tsx';
 import { TitheTable } from './components/TitheTable.tsx';
@@ -28,6 +31,18 @@ interface AppProps {
   onLogout: () => void;
   assignedBial: string | null;
 }
+
+const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zM13 12.67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
+    </svg>
+);
+
+const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
+    </svg>
+);
 
 const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -282,6 +297,99 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setSelectedMonth(null);
   }, []);
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'decimal' }).format(value);
+  };
+
+  const handleExportBialExcel = () => {
+        if (!selectedYear || !selectedMonth || !selectedUpaBial || families.length === 0) return;
+
+        const dataToExport = families.map(family => ({
+            'Family Name': family.name,
+            'Ip Serial No.': family.ipSerialNo ?? 'N/A',
+            'Pathian Ram': family.tithe.pathianRam,
+            'Ramthar': family.tithe.ramthar,
+            'Tualchhung': family.tithe.tualchhung,
+            'Total': family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung,
+        }));
+        
+        const totals = families.reduce((acc, f) => {
+            acc.pathianRam += f.tithe.pathianRam;
+            acc.ramthar += f.tithe.ramthar;
+            acc.tualchhung += f.tithe.tualchhung;
+            acc.total += f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung;
+            return acc;
+        }, { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 });
+
+        const footer = {
+            'Family Name': 'Grand Total',
+            'Ip Serial No.': '',
+            'Pathian Ram': totals.pathianRam,
+            'Ramthar': totals.ramthar,
+            'Tualchhung': totals.tualchhung,
+            'Total': totals.total,
+        };
+        
+        const worksheet = utils.json_to_sheet(dataToExport);
+        utils.sheet_add_json(worksheet, [footer], { skipHeader: true, origin: -1 });
+
+        const workbook = utils.book_new();
+        utils.book_append_sheet(workbook, worksheet, "Tithe Details");
+
+        writeFile(workbook, `Tithe_Details_${selectedUpaBial.replace(/ /g, '_')}_${selectedMonth}_${selectedYear}.xlsx`);
+    };
+
+    const handleExportBialPdf = () => {
+        if (!selectedYear || !selectedMonth || !selectedUpaBial || families.length === 0) return;
+
+        const doc = new jsPDF();
+        autoTable(doc, {
+            body: [[`Tithe Details for ${selectedUpaBial}`], [`${selectedMonth} ${selectedYear}`]],
+            theme: 'plain',
+            styles: { fontSize: 12, halign: 'center' },
+        });
+
+        const head = [['Family Name', 'Ip Serial No.', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
+        const body = families.map(f => [
+            f.name,
+            f.ipSerialNo ?? 'N/A',
+            formatCurrency(f.tithe.pathianRam),
+            formatCurrency(f.tithe.ramthar),
+            formatCurrency(f.tithe.tualchhung),
+            formatCurrency(f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung),
+        ]);
+
+        const totals = families.reduce((acc, f) => {
+            acc.pathianRam += f.tithe.pathianRam;
+            acc.ramthar += f.tithe.ramthar;
+            acc.tualchhung += f.tithe.tualchhung;
+            acc.total += f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung;
+            return acc;
+        }, { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 });
+
+        const foot = [[
+            'Grand Total',
+            '',
+            formatCurrency(totals.pathianRam),
+            formatCurrency(totals.ramthar),
+            formatCurrency(totals.tualchhung),
+            formatCurrency(totals.total),
+        ]];
+        
+        autoTable(doc, {
+            head,
+            body,
+            foot,
+            startY: (doc as any).lastAutoTable.finalY + 2,
+            headStyles: { fillColor: [241, 245, 249], textColor: [48, 63, 84], fontStyle: 'bold' },
+            footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold' },
+            styles: { halign: 'right' },
+            columnStyles: { 0: { halign: 'left' }, 1: { halign: 'left' } },
+        });
+
+        doc.save(`Tithe_Details_${selectedUpaBial.replace(/ /g, '_')}_${selectedMonth}_${selectedYear}.pdf`);
+    };
+
 
   const renderContent = () => {
     if (error) {
@@ -412,16 +520,32 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                 </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
-                <div className="flex-grow w-full">
+            <div className="flex flex-col sm:flex-row gap-4 items-start mb-8 flex-wrap">
+                <div className="flex-grow w-full sm:w-auto">
                     <AddFamilyForm onAddFamily={handleAddFamily} />
                 </div>
                 <ImportFamilies onImport={handleImportFamilies} />
                 <button
                     onClick={() => setView('report')}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md"
                 >
-                    View Monthly Report
+                    View Aggregate Report
+                </button>
+                 <button
+                    onClick={handleExportBialExcel}
+                    disabled={families.length === 0}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                    <ExportIcon className="w-5 h-5" />
+                    Export Excel (This Bial)
+                </button>
+                 <button
+                    onClick={handleExportBialPdf}
+                    disabled={families.length === 0}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                    <PdfIcon className="w-5 h-5" />
+                    Export PDF (This Bial)
                 </button>
             </div>
 
