@@ -342,6 +342,53 @@ const getInitialData = (): YearlyData => {
         { id: 'bial8-39', name: 'Ramthianghlima', ipSerialNo: 39 },
     ];
 
+    const bial9FamilyTemplates = [
+        { id: 'bial9-1', name: 'CF Lalramnghaka', ipSerialNo: 1 },
+        { id: 'bial9-2', name: 'Ramdinsanga', ipSerialNo: 2 },
+        { id: 'bial9-3', name: 'Upa R Lalramhluna', ipSerialNo: 3 },
+        { id: 'bial9-4', name: 'Lalnuntluangi Ralte', ipSerialNo: 4 },
+        { id: 'bial9-5', name: 'Buaithanga', ipSerialNo: 5 },
+        { id: 'bial9-6', name: 'Malsawmi Tlau', ipSerialNo: 6 },
+        { id: 'bial9-7', name: 'F Lalhriatpuia', ipSerialNo: 7 },
+        { id: 'bial9-8', name: 'H Zahmingliana', ipSerialNo: 8 },
+        { id: 'bial9-9', name: 'Hmingthanzauva Chhangte', ipSerialNo: 9 },
+        { id: 'bial9-10', name: 'K Lalhlira', ipSerialNo: 10 },
+        { id: 'bial9-11', name: 'Zobiakzuali', ipSerialNo: 11 },
+        { id: 'bial9-12', name: 'Lalremmawia', ipSerialNo: 12 },
+        { id: 'bial9-13', name: 'Thanhlira', ipSerialNo: 13 },
+        { id: 'bial9-14', name: 'PC Lalchhuangkima', ipSerialNo: 14 },
+        { id: 'bial9-15', name: 'Gochingi', ipSerialNo: 15 },
+        { id: 'bial9-16', name: 'Nginmuansanga', ipSerialNo: 16 },
+        { id: 'bial9-17', name: 'JH Kapluaia', ipSerialNo: 17 },
+        { id: 'bial9-18', name: 'Zokimi', ipSerialNo: 18 },
+        { id: 'bial9-19', name: 'Lalhmingmawia', ipSerialNo: 19 },
+        { id: 'bial9-20', name: 'PC Zoramthanga', ipSerialNo: 20 },
+        { id: 'bial9-21', name: 'Thalianchhungi', ipSerialNo: 21 },
+        { id: 'bial9-22', name: 'Kawlthangpuii', ipSerialNo: 22 },
+        { id: 'bial9-23', name: 'Kapmunga', ipSerialNo: 23 },
+        { id: 'bial9-24', name: 'John Vanlalremruata', ipSerialNo: 24 },
+        { id: 'bial9-25', name: 'Hrinkama', ipSerialNo: 25 },
+        { id: 'bial9-26', name: 'Langkhanpauva', ipSerialNo: 26 },
+        { id: 'bial9-27', name: 'C Lalchhanhima', ipSerialNo: 27 },
+        { id: 'bial9-28', name: 'F Lalchhuanpuia', ipSerialNo: 28 },
+        { id: 'bial9-29', name: 'Lalchungnungi', ipSerialNo: 29 },
+        { id: 'bial9-30', name: 'K Lalduhawma', ipSerialNo: 30 },
+        { id: 'bial9-31', name: 'Vanlalhriata', ipSerialNo: 31 },
+        { id: 'bial9-32', name: 'K Thuamluaia', ipSerialNo: 32 },
+        { id: 'bial9-33', name: 'Isak Lalengkima', ipSerialNo: 33 },
+        { id: 'bial9-34', name: 'Nelson Khiangte', ipSerialNo: 34 },
+        { id: 'bial9-35', name: 'Kamtinmanga', ipSerialNo: 35 },
+        { id: 'bial9-36', name: 'Tlangthanmawia', ipSerialNo: 36 },
+        { id: 'bial9-37', name: 'B Zelkhangova', ipSerialNo: 37 },
+        { id: 'bial9-38', name: 'Tuanzopianga', ipSerialNo: 38 },
+        { id: 'bial9-39', name: 'Pensionliana', ipSerialNo: 39 },
+        { id: 'bial9-40', name: 'Lalhmunliana', ipSerialNo: 40 },
+        { id: 'bial9-41', name: 'Larchhuakmawia', ipSerialNo: 41 },
+        { id: 'bial9-42', name: 'Rochhuanawma', ipSerialNo: 42 },
+        { id: 'bial9-43', name: 'Rundinthuama', ipSerialNo: 43 },
+        { id: 'bial9-44', name: 'MS Dawngzela', ipSerialNo: 44 }
+    ];
+
     const bial10FamilyTemplates = [
         { id: 'bial10-1', name: 'Lalroenga', ipSerialNo: 1 },
         { id: 'bial10-2', name: 'Lianzatuanga', ipSerialNo: 2 },
@@ -511,6 +558,11 @@ const getInitialData = (): YearlyData => {
             tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
         }));
 
+        const bial9Families = bial9FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
         const bial10Families = bial10FamilyTemplates.map(family => ({
             ...family,
             tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
@@ -540,6 +592,7 @@ const getInitialData = (): YearlyData => {
             "Upa Bial 6": bial6Families,
             "Upa Bial 7": bial7Families,
             "Upa Bial 8": bial8Families,
+            "Upa Bial 9": bial9Families,
             "Upa Bial 10": bial10Families,
             "Upa Bial 11": bial11Families,
             "Upa Bial 12": bial12Families,
