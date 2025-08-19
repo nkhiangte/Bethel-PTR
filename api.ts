@@ -200,17 +200,13 @@ const saveUsers = (users: User[]) => {
 export const login = async (phone: string, password: string): Promise<{ token: string }> => {
     await simulateDelay();
     const users = getUsers();
-    const userIndex = users.findIndex(u => u.phone === phone && u.passwordHash === password);
+    const user = users.find(u => u.phone === phone && u.passwordHash === password);
 
-    if (userIndex > -1) {
-        const user = users[userIndex];
+    if (user) {
         const token = `mock-token-${user.id}-${Date.now()}`;
         
-        // Invalidate other sessions by setting a new session token for the user
-        users[userIndex].sessionToken = token;
-        saveUsers(users);
-
-        // Set the token for the current session
+        // The token is no longer saved to the central user record, allowing multiple sessions.
+        // It's only given to the client to be stored locally.
         localStorage.setItem(AUTH_TOKEN_KEY, token);
         return { token };
     } else {
@@ -254,18 +250,24 @@ export const checkAuth = (): boolean => {
     }
 
     try {
-        const userId = token.split('-')[2];
-        if (!userId) return false;
-
+        // The token format is 'mock-token-USER_ID-TIMESTAMP'
+        const parts = token.split('-');
+        if (parts.length < 3 || parts[0] !== 'mock' || parts[1] !== 'token') {
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            return false;
+        }
+        const userId = parts[2];
+        
         const users = getUsers();
-        const user = users.find(u => u.id === userId);
+        // The check is now just to see if a user with this ID exists.
+        // This allows multiple device logins, as we are not invalidating old tokens.
+        const userExists = users.some(u => u.id === userId);
 
-        if (user && user.sessionToken === token) {
+        if (userExists) {
             return true;
         }
 
-        // If tokens don't match, it means a newer session exists.
-        // Clean up the invalid local token.
+        // If user doesn't exist (e.g., deleted), the token is invalid.
         localStorage.removeItem(AUTH_TOKEN_KEY);
         return false;
     } catch (e) {
@@ -276,20 +278,7 @@ export const checkAuth = (): boolean => {
 };
 
 export const logout = () => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (token) {
-        try {
-            const userId = token.split('-')[2];
-            const users = getUsers();
-            const userIndex = users.findIndex(u => u.id === userId);
-            if (userIndex > -1) {
-                // Clear the session token from the user's record
-                delete users[userIndex].sessionToken;
-                saveUsers(users);
-            }
-        } catch (e) {
-            console.error("Error during logout token processing:", e);
-        }
-    }
+    // We just need to remove the token from the current device's storage.
+    // There is no central session token to clear anymore.
     localStorage.removeItem(AUTH_TOKEN_KEY);
 };
