@@ -45,4 +45,5 @@ export interface User {
   name: string;
   phone: string;
   passwordHash: string; // In a real app, this would be a securely hashed password
+  assignedBial: string | null; // e.g., "Upa Bial 1", null for admin
 }

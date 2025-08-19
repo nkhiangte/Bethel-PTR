@@ -1,5 +1,6 @@
 
 
+
 import type { YearlyData, Family, Tithe, AggregateReportData, BialTotal, User } from './types.ts';
 
 // --- CONFIGURATION ---
@@ -19,20 +20,537 @@ const simulateDelay = () => new Promise(resolve => setTimeout(resolve, SIMULATED
 
 const getInitialData = (): YearlyData => {
     const currentYear = new Date().getFullYear();
-    const currentMonth = MONTHS[new Date().getMonth()];
-    return {
-        [currentYear]: {
-            [currentMonth]: {
-                "Upa Bial 1": [
-                    { id: '1', name: 'Vanlalruata Family', ipSerialNo: 1, tithe: { pathianRam: 1000, ramthar: 500, tualchhung: 300 } },
-                    { id: '2', name: 'Lalchhanhima Family', ipSerialNo: 2, tithe: { pathianRam: 1200, ramthar: 600, tualchhung: 400 } },
-                ],
-                "Upa Bial 2": [
-                    { id: '3', name: 'Zoremsangi Family', ipSerialNo: 3, tithe: { pathianRam: 800, ramthar: 400, tualchhung: 250 } },
-                ]
-            }
-        }
-    };
+
+    // Define family templates with persistent IDs
+    const bial1FamilyTemplates = [
+        { id: 'bial1-1', name: 'Lalramthara', ipSerialNo: 1 },
+        { id: 'bial1-2', name: 'F. Lalbuatsaiha', ipSerialNo: 2 },
+        { id: 'bial1-3', name: 'Lalramnghahlela', ipSerialNo: 3 },
+        { id: 'bial1-4', name: 'Duhzuala Chawngthu', ipSerialNo: 4 },
+        { id: 'bial1-5', name: 'BH Mesaia', ipSerialNo: 5 },
+        { id: 'bial1-6', name: 'Lalramchuana', ipSerialNo: 6 },
+        { id: 'bial1-7', name: 'Saiengliani', ipSerialNo: 7 },
+        { id: 'bial1-8', name: 'Darmawii', ipSerialNo: 8 },
+        { id: 'bial1-9', name: 'Felix Lalhruaitluanga', ipSerialNo: 9 },
+        { id: 'bial1-10', name: 'R. Lalhmingliana', ipSerialNo: 10 },
+        { id: 'bial1-11', name: 'C. Lalramchhana', ipSerialNo: 11 },
+        { id: 'bial1-12', name: 'Lalhriatpuia', ipSerialNo: 12 },
+        { id: 'bial1-13', name: 'Zosangpuii', ipSerialNo: 13 },
+        { id: 'bial1-14', name: 'Joshua Lalmuanawma', ipSerialNo: 14 },
+        { id: 'bial1-15', name: 'R. Ramluaha', ipSerialNo: 15 },
+        { id: 'bial1-16', name: 'F. Lalnunpuia', ipSerialNo: 16 },
+        { id: 'bial1-17', name: 'Sangkungi', ipSerialNo: 17 },
+        { id: 'bial1-18', name: 'Lalchhuanawmi', ipSerialNo: 18 },
+        { id: 'bial1-19', name: 'Thangbuanga Guite', ipSerialNo: 19 },
+        { id: 'bial1-20', name: 'B. Ronghaki', ipSerialNo: 20 },
+        { id: 'bial1-21', name: 'R. Zothanpuia', ipSerialNo: 21 },
+        { id: 'bial1-22', name: 'T. Lalthlengliana', ipSerialNo: 22 },
+        { id: 'bial1-23', name: 'Hauzamchingi', ipSerialNo: 23 },
+        { id: 'bial1-24', name: 'C. Hranglawmi', ipSerialNo: 24 },
+        { id: 'bial1-25', name: 'C. Zonunsanga', ipSerialNo: 25 },
+        { id: 'bial1-26', name: 'C. Lalzova', ipSerialNo: 26 },
+        { id: 'bial1-27', name: 'Lalnuntluangi', ipSerialNo: 27 }
+    ];
+
+    const bial2FamilyTemplates = [
+        { id: 'bial2-1', name: 'K. Lalrawna', ipSerialNo: 1 },
+        { id: 'bial2-2', name: 'Vanlalruatpuia', ipSerialNo: 2 },
+        { id: 'bial2-3', name: 'Lalremruatveka', ipSerialNo: 3 },
+        { id: 'bial2-4', name: 'Lalmuanpuia', ipSerialNo: 4 },
+        { id: 'bial2-5', name: 'Lalniliana', ipSerialNo: 5 },
+        { id: 'bial2-6', name: 'Upa B. Hranghlira', ipSerialNo: 6 },
+        { id: 'bial2-7', name: 'B. Lalramnghaka', ipSerialNo: 7 },
+        { id: 'bial2-8', name: 'Upa K. Vanlalhmuaka', ipSerialNo: 8 },
+        { id: 'bial2-9', name: 'DS Samte', ipSerialNo: 9 },
+        { id: 'bial2-10', name: 'Mungngaihsanga', ipSerialNo: 10 },
+        { id: 'bial2-11', name: 'Lalramliana', ipSerialNo: 11 },
+        { id: 'bial2-12', name: 'Lalniengi', ipSerialNo: 12 },
+        { id: 'bial2-13', name: 'P. Lalhmingthanga', ipSerialNo: 13 },
+        { id: 'bial2-14', name: 'Vanlalthupuia', ipSerialNo: 14 },
+        { id: 'bial2-15', name: 'Lalnuntluanga Varte', ipSerialNo: 15 },
+        { id: 'bial2-16', name: 'Lalrikhumi', ipSerialNo: 16 },
+        { id: 'bial2-17', name: 'Lalnunmawii', ipSerialNo: 17 },
+        { id: 'bial2-18', name: 'Sapkaii', ipSerialNo: 18 },
+        { id: 'bial2-19', name: 'C. Lalrawngbawla', ipSerialNo: 19 },
+        { id: 'bial2-20', name: 'Biakthansanga', ipSerialNo: 20 },
+        { id: 'bial2-21', name: 'C. Lalrinfela', ipSerialNo: 21 },
+        { id: 'bial2-22', name: 'C. Laltanpuia', ipSerialNo: 22 },
+        { id: 'bial2-23', name: 'HS. Lalthachianga', ipSerialNo: 23 },
+        { id: 'bial2-24', name: 'PC Lalhmachhuani', ipSerialNo: 24 },
+        { id: 'bial2-25', name: 'R. Lalhmangaihzuali', ipSerialNo: 25 },
+        { id: 'bial2-26', name: 'RL Malsawmtluangi', ipSerialNo: 26 },
+        { id: 'bial2-27', name: 'Lalthankima', ipSerialNo: 27 },
+        { id: 'bial2-28', name: 'S.Liansangvunga', ipSerialNo: 28 },
+        { id: 'bial2-29', name: 'R.Lalremruata', ipSerialNo: 29 },
+        { id: 'bial2-30', name: 'H.Lalrindika', ipSerialNo: 30 },
+        { id: 'bial2-31', name: 'R.Lalrindika', ipSerialNo: 31 },
+        { id: 'bial2-32', name: 'R.Lalmalsawmi', ipSerialNo: 32 },
+        { id: 'bial2-33', name: 'Ramnunmawia', ipSerialNo: 33 },
+        { id: 'bial2-34', name: 'Laltankima', ipSerialNo: 34 },
+        { id: 'bial2-35', name: 'H Laltlanchhuaha', ipSerialNo: 35 },
+        { id: 'bial2-36', name: 'Lalrosiama', ipSerialNo: 36 },
+        { id: 'bial2-37', name: 'Lenchuana Jahau', ipSerialNo: 37 }
+    ];
+
+    const bial3FamilyTemplates = [
+        { id: 'bial3-1', name: 'L.Khenpauva', ipSerialNo: 1 },
+        { id: 'bial3-2', name: 'Evan Lalhlupuii', ipSerialNo: 2 },
+        { id: 'bial3-3', name: 'Hmingthanpuii', ipSerialNo: 3 },
+        { id: 'bial3-4', name: 'R.Lalremmawia', ipSerialNo: 4 },
+        { id: 'bial3-5', name: 'Israela Hauhnar', ipSerialNo: 5 },
+        { id: 'bial3-6', name: 'V.Nunmawii', ipSerialNo: 6 },
+        { id: 'bial3-7', name: 'Lalchhandama', ipSerialNo: 7 },
+        { id: 'bial3-8', name: 'Rev. Lalhmingthanga Chhangte', ipSerialNo: 8 },
+        { id: 'bial3-9', name: 'Ngurbawitluangi', ipSerialNo: 9 },
+        { id: 'bial3-10', name: 'Upa C.Lalthantluanga', ipSerialNo: 10 },
+        { id: 'bial3-11', name: 'Nangkhanthanga', ipSerialNo: 11 },
+        { id: 'bial3-12', name: 'Tluangzathanga', ipSerialNo: 12 },
+        { id: 'bial3-13', name: 'VLP Zarzokima', ipSerialNo: 13 },
+        { id: 'bial3-14', name: 'Manlamniangi', ipSerialNo: 14 },
+        { id: 'bial3-15', name: 'Vanlalliana', ipSerialNo: 15 },
+        { id: 'bial3-16', name: 'Raldomana', ipSerialNo: 16 },
+        { id: 'bial3-17', name: 'Upa PC Lalhmingliana', ipSerialNo: 17 },
+        { id: 'bial3-18', name: 'Laltlansanga', ipSerialNo: 18 },
+        { id: 'bial3-19', name: 'Rev. Vankhuma', ipSerialNo: 19 },
+        { id: 'bial3-20', name: 'PC Lalmuanpuia', ipSerialNo: 20 },
+        { id: 'bial3-21', name: 'Lalnunhlima', ipSerialNo: 21 },
+        { id: 'bial3-22', name: 'Lalnunengi', ipSerialNo: 22 },
+        { id: 'bial3-23', name: 'Lalbawii', ipSerialNo: 23 },
+        { id: 'bial3-24', name: 'Lalruatfela', ipSerialNo: 24 },
+        { id: 'bial3-25', name: 'V.Lalthanzari', ipSerialNo: 25 },
+        { id: 'bial3-26', name: 'Lalruatliani', ipSerialNo: 26 },
+        { id: 'bial3-27', name: 'K.Lalengthanga', ipSerialNo: 27 },
+        { id: 'bial3-28', name: 'Darringaii', ipSerialNo: 28 },
+        { id: 'bial3-29', name: 'C.Challiana', ipSerialNo: 29 },
+        { id: 'bial3-30', name: 'C.Lalfaka', ipSerialNo: 30 },
+        { id: 'bial3-31', name: 'C.Vanmawia', ipSerialNo: 31 },
+        { id: 'bial3-32', name: 'C. Vanlalauva', ipSerialNo: 32 },
+        { id: 'bial3-33', name: 'K.Thiangina', ipSerialNo: 33 }
+    ];
+
+    const bial4FamilyTemplates = [
+        { id: 'bial4-1', name: 'Suineihi', ipSerialNo: 1 },
+        { id: 'bial4-2', name: 'Lalpeksanga', ipSerialNo: 2 },
+        { id: 'bial4-3', name: 'R.Lalbiakzara', ipSerialNo: 3 },
+        { id: 'bial4-4', name: 'T.Sangtluanga', ipSerialNo: 4 },
+        { id: 'bial4-5', name: 'C.Lainguri', ipSerialNo: 5 },
+        { id: 'bial4-6', name: 'Lalmuanchhungi', ipSerialNo: 6 },
+        { id: 'bial4-7', name: 'H.Lalzuitluanga', ipSerialNo: 7 },
+        { id: 'bial4-8', name: 'T.Chalzawna', ipSerialNo: 8 },
+        // IP Serial 9 is skipped as it is empty in the source
+        { id: 'bial4-10', name: 'Upa H Lalmawia', ipSerialNo: 10 },
+        { id: 'bial4-11', name: 'Zoramenga', ipSerialNo: 11 },
+        { id: 'bial4-12', name: 'F.Lalduhawma', ipSerialNo: 12 },
+        { id: 'bial4-13', name: 'K.Lalduata', ipSerialNo: 13 },
+        { id: 'bial4-14', name: 'C.Hmingthansanga', ipSerialNo: 14 },
+        { id: 'bial4-15', name: 'Hmingthansanga Chhakchhuak', ipSerialNo: 15 },
+        { id: 'bial4-16', name: 'Lalronguri Sailo', ipSerialNo: 16 },
+        { id: 'bial4-17', name: 'Lalngaihawmi', ipSerialNo: 17 },
+        { id: 'bial4-18', name: 'Lalhriatpuia', ipSerialNo: 18 },
+        { id: 'bial4-19', name: 'H.Rampanliana', ipSerialNo: 19 },
+        { id: 'bial4-20', name: 'K.Lalduha', ipSerialNo: 20 },
+        { id: 'bial4-21', name: 'K.Lalbiakhlira', ipSerialNo: 21 },
+        { id: 'bial4-22', name: 'Lalhlimpuii', ipSerialNo: 22 },
+        { id: 'bial4-23', name: 'Ronald Lalhmachhuana', ipSerialNo: 23 },
+        { id: 'bial4-24', name: 'Lalfakawma', ipSerialNo: 24 },
+        { id: 'bial4-25', name: 'C.Lalpiangthanga', ipSerialNo: 25 },
+        { id: 'bial4-26', name: 'Zalianchhiari', ipSerialNo: 26 },
+        { id: 'bial4-27', name: 'Aimawii', ipSerialNo: 27 },
+        { id: 'bial4-28', name: 'PC Hrangzuala', ipSerialNo: 28 },
+        { id: 'bial4-29', name: 'Upa H.Zairemmawia', ipSerialNo: 29 },
+        { id: 'bial4-30', name: 'Lalthangliana', ipSerialNo: 30 },
+        { id: 'bial4-31', name: 'Lalthlengliana', ipSerialNo: 31 },
+        { id: 'bial4-32', name: 'Vanlalfinga', ipSerialNo: 32 },
+        { id: 'bial4-33', name: 'Lalhmachhuani', ipSerialNo: 33 },
+        { id: 'bial4-34', name: 'Lalchungnunga', ipSerialNo: 34 },
+        { id: 'bial4-35', name: 'Joseph Vanlalthanpuia', ipSerialNo: 35 },
+        { id: 'bial4-36', name: 'PC.Lalthantluanga', ipSerialNo: 36 },
+        { id: 'bial4-37', name: 'Zonunpari', ipSerialNo: 37 }
+    ];
+
+    const bial5FamilyTemplates = [
+        { id: 'bial5-1', name: 'C Roliana', ipSerialNo: 1 },
+        { id: 'bial5-2', name: 'C Zokhuma', ipSerialNo: 2 },
+        { id: 'bial5-3', name: 'Zomawii', ipSerialNo: 3 },
+        { id: 'bial5-4', name: 'Lalngaihzuali', ipSerialNo: 4 },
+        { id: 'bial5-5', name: 'V Lalbiakzuala', ipSerialNo: 5 },
+        { id: 'bial5-6', name: 'Laldinngheti', ipSerialNo: 6 },
+        { id: 'bial5-7', name: 'Rohit T Zomuana', ipSerialNo: 7 },
+        { id: 'bial5-8', name: 'Nicky Lalremruata', ipSerialNo: 8 },
+        { id: 'bial5-9', name: 'K Sangkhuma', ipSerialNo: 9 },
+        { id: 'bial5-10', name: 'Lallawmkima Fanai', ipSerialNo: 10 },
+        { id: 'bial5-11', name: 'H Lalnunenga', ipSerialNo: 11 },
+        { id: 'bial5-12', name: 'Ningsianniangi', ipSerialNo: 12 },
+        { id: 'bial5-13', name: 'R Lalthangliana', ipSerialNo: 13 },
+        { id: 'bial5-14', name: 'Khamdova', ipSerialNo: 14 },
+        { id: 'bial5-15', name: 'Lalremsangi', ipSerialNo: 15 },
+        { id: 'bial5-16', name: 'Zamuana', ipSerialNo: 16 },
+        { id: 'bial5-17', name: 'TK Manga', ipSerialNo: 17 },
+        { id: 'bial5-18', name: 'H Vanlalpeka', ipSerialNo: 18 },
+        { id: 'bial5-19', name: 'H Zakima', ipSerialNo: 19 },
+        { id: 'bial5-20', name: 'Christopher Lalthlamuana', ipSerialNo: 20 },
+        { id: 'bial5-21', name: 'ShieldLawmthangi', ipSerialNo: 21 },
+        { id: 'bial5-22', name: 'C Vanlalruata', ipSerialNo: 22 },
+        { id: 'bial5-23', name: 'MC Vanlalzuii', ipSerialNo: 23 },
+        { id: 'bial5-24', name: 'Remruatpuia', ipSerialNo: 24 },
+        { id: 'bial5-25', name: 'Liandeihluni', ipSerialNo: 25 },
+        { id: 'bial5-26', name: 'MS Dawngliana', ipSerialNo: 26 },
+        { id: 'bial5-27', name: 'R Lalrintluanga', ipSerialNo: 27 },
+        { id: 'bial5-28', name: 'R Ramtharnghaka', ipSerialNo: 28 },
+        { id: 'bial5-29', name: 'C Malsawmdawngliana', ipSerialNo: 29 },
+        { id: 'bial5-30', name: 'HB Vanlalvuana', ipSerialNo: 30 },
+        { id: 'bial5-31', name: 'Zonunmawia Khiangte', ipSerialNo: 31 },
+        { id: 'bial5-32', name: 'F Zawnpuithangi', ipSerialNo: 32 },
+        { id: 'bial5-33', name: 'Dimlamniangi', ipSerialNo: 33 },
+        { id: 'bial5-34', name: 'Kapthuama', ipSerialNo: 34 },
+        { id: 'bial5-35', name: 'Zamdoliana', ipSerialNo: 35 },
+        { id: 'bial5-36', name: 'Thangsianmanga', ipSerialNo: 36 },
+        { id: 'bial5-37', name: 'David Thangdingliana', ipSerialNo: 37 },
+        { id: 'bial5-38', name: 'Lalhriatpuii', ipSerialNo: 38 },
+        { id: 'bial5-39', name: 'Lalrinawma', ipSerialNo: 39 },
+        { id: 'bial5-40', name: 'Lalremsanga', ipSerialNo: 40 },
+        { id: 'bial5-41', name: 'Lalbiakzuali', ipSerialNo: 41 },
+    ];
+
+    const bial6FamilyTemplates = [
+        { id: 'bial6-1', name: 'Zamngaihluni', ipSerialNo: 1 },
+        { id: 'bial6-2', name: 'Thangzaliana', ipSerialNo: 2 },
+        { id: 'bial6-3', name: 'HT Khupa', ipSerialNo: 3 },
+        { id: 'bial6-4', name: 'Lucy Nianglunzovi', ipSerialNo: 4 },
+        { id: 'bial6-5', name: 'C.Keilianthanga', ipSerialNo: 5 },
+        { id: 'bial6-8', name: 'Lalsawizauvi', ipSerialNo: 8 },
+        { id: 'bial6-9', name: 'Rolianpuii', ipSerialNo: 9 },
+        { id: 'bial6-10', name: 'Suipari', ipSerialNo: 10 },
+        { id: 'bial6-11', name: 'David Thanga', ipSerialNo: 11 },
+        { id: 'bial6-12', name: 'Sawngmanga', ipSerialNo: 12 },
+        { id: 'bial6-13', name: 'Lalrawngbawli', ipSerialNo: 13 },
+        { id: 'bial6-14', name: 'K.Malsawmi', ipSerialNo: 14 },
+        { id: 'bial6-15', name: 'Lalbiakmuana', ipSerialNo: 15 },
+        { id: 'bial6-16', name: 'Lalremsanga', ipSerialNo: 16 },
+        { id: 'bial6-17', name: 'Vanlalrorelpuia', ipSerialNo: 17 },
+        { id: 'bial6-18', name: 'C.Lalbiakthanga', ipSerialNo: 18 },
+        { id: 'bial6-19', name: 'C.Lalrohlua', ipSerialNo: 19 },
+        { id: 'bial6-20', name: 'C.Pangthuama', ipSerialNo: 20 },
+        { id: 'bial6-21', name: 'C.Ramengmawia', ipSerialNo: 21 },
+        { id: 'bial6-22', name: 'HB Lallawmsanga', ipSerialNo: 22 },
+        { id: 'bial6-23', name: 'Chuauthuami', ipSerialNo: 23 },
+        { id: 'bial6-24', name: 'Sapzingi', ipSerialNo: 24 },
+        { id: 'bial6-25', name: 'K.Zakima', ipSerialNo: 25 },
+        { id: 'bial6-26', name: 'K Lalrammawia', ipSerialNo: 26 },
+        { id: 'bial6-28', name: 'Dolianthanga', ipSerialNo: 28 },
+        { id: 'bial6-29', name: 'B.Kapthanzawna', ipSerialNo: 29 },
+        { id: 'bial6-30', name: 'Lalhmunsangi', ipSerialNo: 30 },
+        { id: 'bial6-31', name: 'PB Pachhunga', ipSerialNo: 31 },
+        { id: 'bial6-32', name: 'Lalrinchhana', ipSerialNo: 32 },
+        { id: 'bial6-33', name: 'C.Lalchhuanliana', ipSerialNo: 33 },
+        { id: 'bial6-34', name: 'Zohmingthangi', ipSerialNo: 34 },
+        { id: 'bial6-35', name: 'Lalneihmawia', ipSerialNo: 35 },
+        { id: 'bial6-36', name: 'Daizavungi', ipSerialNo: 36 },
+        { id: 'bial6-37', name: 'Thangneihliana', ipSerialNo: 37 },
+        { id: 'bial6-38', name: 'Chinglunnuami', ipSerialNo: 38 },
+        { id: 'bial6-39', name: 'Hualthangpuia', ipSerialNo: 39 },
+        { id: 'bial6-40', name: 'Lalrimawia', ipSerialNo: 40 },
+        { id: 'bial6-42', name: 'R Lalmuankima', ipSerialNo: 42 },
+        { id: 'bial6-43', name: 'Lucy Nianglunzovi', ipSerialNo: 43 },
+        { id: 'bial6-44', name: 'C Vanlalngena', ipSerialNo: 44 },
+    ];
+
+    const bial7FamilyTemplates = [
+        { id: 'bial7-1', name: 'Lalramthari', ipSerialNo: 1 },
+        { id: 'bial7-2', name: 'Lalthianghlima Sailo', ipSerialNo: 2 },
+        { id: 'bial7-3', name: 'Saihmingliana Sailo', ipSerialNo: 3 },
+        { id: 'bial7-4', name: 'Thangdeihkhupa', ipSerialNo: 4 },
+        { id: 'bial7-5', name: 'Zoramgnghingliana', ipSerialNo: 5 },
+        { id: 'bial7-6', name: 'Zonunsanga', ipSerialNo: 6 },
+        { id: 'bial7-7', name: 'F.Lalrochhiara', ipSerialNo: 7 },
+        { id: 'bial7-8', name: 'Lalramthangi', ipSerialNo: 8 },
+        { id: 'bial7-9', name: 'Laltlanzova Pautu', ipSerialNo: 9 },
+        { id: 'bial7-10', name: 'Lalbiakhluna', ipSerialNo: 10 },
+        { id: 'bial7-11', name: 'K.Pianthanga', ipSerialNo: 11 },
+        { id: 'bial7-12', name: 'Lianlamthanga', ipSerialNo: 12 },
+        { id: 'bial7-13', name: 'Hmunneihthanga', ipSerialNo: 13 },
+        { id: 'bial7-14', name: 'Hunlawmawma', ipSerialNo: 14 },
+        { id: 'bial7-15', name: 'PC Zomuana', ipSerialNo: 15 },
+        { id: 'bial7-16', name: 'Lalengzauva', ipSerialNo: 16 },
+        { id: 'bial7-17', name: 'PC Lalnunsangi', ipSerialNo: 17 },
+        { id: 'bial7-18', name: 'K Lalchhuanawma', ipSerialNo: 18 },
+        { id: 'bial7-19', name: 'C.Rohmingliana', ipSerialNo: 19 },
+        { id: 'bial7-20', name: 'Lalramhmachhuana Sailo', ipSerialNo: 20 },
+        { id: 'bial7-21', name: 'K.Lalthanliana', ipSerialNo: 21 },
+        { id: 'bial7-22', name: 'F.Lalremsiama', ipSerialNo: 22 },
+        { id: 'bial7-23', name: 'Zothansanga', ipSerialNo: 23 },
+        { id: 'bial7-24', name: 'T.Upa Lalremruata Hualngo', ipSerialNo: 24 },
+        { id: 'bial7-25', name: 'Ramdinpuia', ipSerialNo: 25 },
+        { id: 'bial7-26', name: 'Hrangkapkima', ipSerialNo: 26 },
+        { id: 'bial7-27', name: 'C.Lianthuama', ipSerialNo: 27 },
+        { id: 'bial7-28', name: 'F.Lalrosiama', ipSerialNo: 28 },
+        { id: 'bial7-29', name: 'Hmangaihtluangi', ipSerialNo: 29 },
+        { id: 'bial7-30', name: 'K.Lalengkima', ipSerialNo: 30 },
+        { id: 'bial7-31', name: 'C.Laingura', ipSerialNo: 31 },
+        { id: 'bial7-32', name: 'C.Lalhruaitluangi', ipSerialNo: 32 },
+        { id: 'bial7-33', name: 'K.Vanlallampuii', ipSerialNo: 33 },
+        { id: 'bial7-34', name: 'Lianngaihmani', ipSerialNo: 34 },
+        { id: 'bial7-35', name: 'F.Lalnunsanga', ipSerialNo: 35 },
+        { id: 'bial7-36', name: 'Lalramengmawii', ipSerialNo: 36 },
+        { id: 'bial7-37', name: 'Lianngaihniangi', ipSerialNo: 37 },
+        { id: 'bial7-38', name: 'C.Lalhmingmawii', ipSerialNo: 38 },
+        { id: 'bial7-39', name: 'F. Hmingthanzuala', ipSerialNo: 39 },
+        { id: 'bial7-40', name: 'C Vanlalngena', ipSerialNo: 40 },
+        { id: 'bial7-41', name: 'Chhuanliana', ipSerialNo: 41 },
+        { id: 'bial7-42', name: 'David Zamtea', ipSerialNo: 42 },
+        { id: 'bial7-43', name: 'C Rinliani', ipSerialNo: 43 },
+        { id: 'bial7-44', name: 'B.Lalliantawna', ipSerialNo: 44 },
+        { id: 'bial7-46', name: 'Remsiamliana', ipSerialNo: 46 }
+    ];
+
+    const bial8FamilyTemplates = [
+        { id: 'bial8-1', name: 'Rodinthara', ipSerialNo: 1 },
+        { id: 'bial8-2', name: 'Lalchhanhima', ipSerialNo: 2 },
+        { id: 'bial8-3', name: 'Rohmingthanga', ipSerialNo: 3 },
+        { id: 'bial8-4', name: 'Isaac Lalrinngheta', ipSerialNo: 4 },
+        { id: 'bial8-5', name: 'Helen Zothanpuii', ipSerialNo: 5 },
+        { id: 'bial8-6', name: 'C Lalrinfela', ipSerialNo: 6 },
+        { id: 'bial8-7', name: 'Lalrohlupuii', ipSerialNo: 7 },
+        { id: 'bial8-8', name: 'B Lalrinenga', ipSerialNo: 8 },
+        { id: 'bial8-9', name: 'Vanlalauva', ipSerialNo: 9 },
+        { id: 'bial8-10', name: 'Lalrindika', ipSerialNo: 10 },
+        { id: 'bial8-11', name: 'K.Vanengmawia', ipSerialNo: 11 },
+        { id: 'bial8-12', name: 'PC Malsawmtluanga', ipSerialNo: 12 },
+        { id: 'bial8-13', name: 'H Lalthlengkima', ipSerialNo: 13 },
+        { id: 'bial8-14', name: 'C.Vanlalduha', ipSerialNo: 14 },
+        { id: 'bial8-15', name: 'R.Pukhuma', ipSerialNo: 15 },
+        { id: 'bial8-16', name: 'Lalengkima', ipSerialNo: 16 },
+        { id: 'bial8-17', name: 'Upa HT Vanlalsawma', ipSerialNo: 17 },
+        { id: 'bial8-18', name: 'C.Lalengmawia', ipSerialNo: 18 },
+        { id: 'bial8-19', name: 'Ginlungmuana', ipSerialNo: 19 },
+        { id: 'bial8-20', name: 'C.Lalrammawia', ipSerialNo: 20 },
+        { id: 'bial8-21', name: 'Lalbiaklawma', ipSerialNo: 21 },
+        { id: 'bial8-22', name: 'Laldingngheta', ipSerialNo: 22 },
+        { id: 'bial8-23', name: 'Lalnuntluanga', ipSerialNo: 23 },
+        { id: 'bial8-24', name: 'Rodawla', ipSerialNo: 24 },
+        { id: 'bial8-25', name: 'Lalhmingvuli', ipSerialNo: 25 },
+        { id: 'bial8-26', name: 'JC Laldinthara', ipSerialNo: 26 },
+        { id: 'bial8-27', name: 'C.Lianhnuna', ipSerialNo: 27 },
+        { id: 'bial8-28', name: 'T.Thlamuana', ipSerialNo: 28 },
+        { id: 'bial8-29', name: 'Laltlanthangi', ipSerialNo: 29 },
+        { id: 'bial8-30', name: 'T.Lalramnghaka', ipSerialNo: 30 },
+        { id: 'bial8-31', name: 'Zorammuani', ipSerialNo: 31 },
+        { id: 'bial8-32', name: 'C.Lalthlamuana', ipSerialNo: 32 },
+        { id: 'bial8-33', name: 'Lallawmzuali', ipSerialNo: 33 },
+        { id: 'bial8-34', name: 'C.Rokima', ipSerialNo: 34 },
+        { id: 'bial8-35', name: 'Challianmawii', ipSerialNo: 35 },
+        { id: 'bial8-36', name: 'Lalthlangzela', ipSerialNo: 36 },
+        { id: 'bial8-37', name: 'Rangthanmawii', ipSerialNo: 37 },
+        { id: 'bial8-38', name: 'TC Vanlalchuana', ipSerialNo: 38 },
+        { id: 'bial8-39', name: 'Ramthianghlima', ipSerialNo: 39 },
+    ];
+
+    const bial10FamilyTemplates = [
+        { id: 'bial10-1', name: 'Lalroenga', ipSerialNo: 1 },
+        { id: 'bial10-2', name: 'Lianzatuanga', ipSerialNo: 2 },
+        { id: 'bial10-3', name: 'Lianmawii', ipSerialNo: 3 },
+        { id: 'bial10-4', name: 'Lalmuanpuia', ipSerialNo: 4 },
+        { id: 'bial10-5', name: 'Rualkhumi', ipSerialNo: 5 },
+        { id: 'bial10-6', name: 'Thangsuanliana', ipSerialNo: 6 },
+        { id: 'bial10-7', name: 'Lalramdinthara', ipSerialNo: 7 },
+        { id: 'bial10-8', name: 'Lalbiakhnuni', ipSerialNo: 8 },
+        { id: 'bial10-9', name: 'K.Lalkhumliana', ipSerialNo: 9 },
+        { id: 'bial10-10', name: 'Lalnunthanga', ipSerialNo: 10 },
+        { id: 'bial10-11', name: 'Vardingliana', ipSerialNo: 11 },
+        { id: 'bial10-12', name: 'Zomuanpuia', ipSerialNo: 12 },
+        { id: 'bial10-13', name: 'HT Lalmalsawma', ipSerialNo: 13 },
+        { id: 'bial10-14', name: 'H.Vanlalthanga', ipSerialNo: 14 },
+        { id: 'bial10-15', name: 'Lalmuanpuia Ralte', ipSerialNo: 15 },
+        { id: 'bial10-16', name: 'Upa David Lalchhanhima', ipSerialNo: 16 },
+        { id: 'bial10-17', name: 'Lalnunziri', ipSerialNo: 17 },
+        { id: 'bial10-18', name: 'Kamdingliana Sailo', ipSerialNo: 18 },
+    ];
+    
+    const bial11FamilyTemplates = [
+        { id: 'bial11-1', name: 'Siamthangpuii', ipSerialNo: 1 },
+        { id: 'bial11-2', name: 'Zohmingmawia Pachuau', ipSerialNo: 2 },
+        { id: 'bial11-3', name: 'C Darrothanga', ipSerialNo: 3 },
+        { id: 'bial11-4', name: 'Lalliannguauva Sailo', ipSerialNo: 4 },
+        { id: 'bial11-5', name: 'Upa G Vanlallawma', ipSerialNo: 5 },
+        { id: 'bial11-6', name: 'Dawngsuanpauva', ipSerialNo: 6 },
+        { id: 'bial11-7', name: 'Sutliansawma', ipSerialNo: 7 },
+        { id: 'bial11-8', name: 'Singzakapa', ipSerialNo: 8 },
+        { id: 'bial11-9', name: 'J Laldawngliana', ipSerialNo: 9 },
+        { id: 'bial11-10', name: 'J Laldinliana', ipSerialNo: 10 },
+        { id: 'bial11-11', name: 'Biaksangpuii', ipSerialNo: 11 },
+        { id: 'bial11-12', name: 'C Lalfakzuala', ipSerialNo: 12 },
+        { id: 'bial11-13', name: 'V Kaizasiama', ipSerialNo: 13 },
+        { id: 'bial11-14', name: 'V Lalpianga', ipSerialNo: 14 },
+        { id: 'bial11-15', name: 'V Lalbiakdika', ipSerialNo: 15 },
+        { id: 'bial11-16', name: 'Rotluangi', ipSerialNo: 16 },
+        { id: 'bial11-17', name: 'T Zonundanga', ipSerialNo: 17 },
+        { id: 'bial11-18', name: 'Lalbiakmuana', ipSerialNo: 18 },
+        { id: 'bial11-19', name: 'Thangvankima', ipSerialNo: 19 },
+        { id: 'bial11-20', name: 'Laldinpuia', ipSerialNo: 20 },
+        { id: 'bial11-21', name: 'Pauginliana', ipSerialNo: 21 },
+        { id: 'bial11-22', name: 'Lalthanghulha', ipSerialNo: 22 },
+        { id: 'bial11-23', name: 'Thangmangliana', ipSerialNo: 23 },
+        { id: 'bial11-24', name: 'Hmingthanmawii', ipSerialNo: 24 },
+        { id: 'bial11-25', name: 'C Chhinghnema', ipSerialNo: 25 },
+        { id: 'bial11-26', name: 'Thaneihluti', ipSerialNo: 26 },
+        { id: 'bial11-27', name: 'C Laitanga', ipSerialNo: 27 },
+        { id: 'bial11-28', name: 'Zarzoliani', ipSerialNo: 28 },
+        { id: 'bial11-29', name: 'Lalhmangaihi', ipSerialNo: 29 },
+        { id: 'bial11-30', name: 'Dimzaniangi', ipSerialNo: 30 },
+        { id: 'bial11-31', name: 'Chingzaniangi', ipSerialNo: 31 },
+        { id: 'bial11-32', name: 'Kapkhansanga', ipSerialNo: 32 },
+        { id: 'bial11-33', name: 'Lalmuanpuii', ipSerialNo: 33 },
+        { id: 'bial11-34', name: 'PL Zawmliana', ipSerialNo: 34 },
+        { id: 'bial11-35', name: 'Rohlupuii', ipSerialNo: 35 },
+    ];
+    
+    const bial12FamilyTemplates = [
+        { id: 'bial12-1', name: 'Hminglianchhunga', ipSerialNo: 1 },
+        { id: 'bial12-2', name: 'Dalliandawnga', ipSerialNo: 2 },
+        { id: 'bial12-3', name: 'Dimluanchingi', ipSerialNo: 3 },
+        { id: 'bial12-4', name: 'Vungzalanga', ipSerialNo: 4 },
+        { id: 'bial12-5', name: 'Paukhanhauva', ipSerialNo: 5 },
+        { id: 'bial12-6', name: 'Dimdeihsiani', ipSerialNo: 6 },
+        { id: 'bial12-7', name: 'Manngaihliani', ipSerialNo: 7 },
+        { id: 'bial12-8', name: 'Chinzakapa', ipSerialNo: 8 },
+        { id: 'bial12-9', name: 'Thangngaihpianga', ipSerialNo: 9 },
+        { id: 'bial12-10', name: 'Chingngaihzami', ipSerialNo: 10 },
+        { id: 'bial12-11', name: 'Paupiansiama', ipSerialNo: 11 },
+        { id: 'bial12-12', name: 'Pausianmuanga', ipSerialNo: 12 },
+        { id: 'bial12-13', name: 'Nangsatinvela', ipSerialNo: 13 },
+        { id: 'bial12-14', name: 'C Lalrohlua', ipSerialNo: 14 },
+        { id: 'bial12-15', name: 'Chingngaihkimi', ipSerialNo: 15 },
+        { id: 'bial12-16', name: 'Nangkapliana', ipSerialNo: 16 },
+        { id: 'bial12-17', name: 'Niangsuanmanga', ipSerialNo: 17 },
+        { id: 'bial12-18', name: 'Chinlamthanga', ipSerialNo: 18 },
+        { id: 'bial12-19', name: 'Chingdeihthangi', ipSerialNo: 19 },
+        { id: 'bial12-20', name: 'T.Sawmpauva', ipSerialNo: 20 },
+        { id: 'bial12-21', name: 'Thangliankama', ipSerialNo: 21 },
+        { id: 'bial12-22', name: 'Thangvunga', ipSerialNo: 22 },
+        { id: 'bial12-23', name: 'Pauthanmawia', ipSerialNo: 23 },
+        { id: 'bial12-24', name: 'Chinlianmawii', ipSerialNo: 24 },
+        { id: 'bial12-25', name: 'Chingdawnmangi', ipSerialNo: 25 },
+        { id: 'bial12-26', name: 'Thanglamkimi', ipSerialNo: 26 },
+        { id: 'bial12-27', name: 'Pauneihchina', ipSerialNo: 27 },
+        { id: 'bial12-28', name: 'Upa Daikhawzama', ipSerialNo: 28 },
+        { id: 'bial12-29', name: 'Paungaihtuanga', ipSerialNo: 29 },
+        { id: 'bial12-30', name: 'F.Lalhunmawia', ipSerialNo: 30 },
+    ];
+    
+    const bial13FamilyTemplates = [
+        { id: 'bial13-1', name: 'C Lalbiaksanga', ipSerialNo: 1 },
+        { id: 'bial13-2', name: 'Zamsianthanga', ipSerialNo: 2 },
+        { id: 'bial13-3', name: 'Niangdeihmani', ipSerialNo: 3 },
+        { id: 'bial13-4', name: 'Thangdeihchina', ipSerialNo: 4 },
+        { id: 'bial13-5', name: 'Sutzamunga', ipSerialNo: 5 },
+        { id: 'bial13-6', name: 'Dawnglamthanga', ipSerialNo: 6 },
+        { id: 'bial13-7', name: 'Suanzasiama', ipSerialNo: 7 },
+        { id: 'bial13-8', name: 'B.Lalbiaklawma', ipSerialNo: 8 },
+        { id: 'bial13-9', name: 'Dalsiankhama', ipSerialNo: 9 },
+        { id: 'bial13-10', name: 'Pauneihthanga', ipSerialNo: 10 },
+        { id: 'bial13-11', name: 'Nangzasuana', ipSerialNo: 11 },
+        { id: 'bial13-12', name: 'Khupzatuanga', ipSerialNo: 12 },
+        { id: 'bial13-13', name: 'Langkhansuana', ipSerialNo: 13 },
+        { id: 'bial13-14', name: 'Roengi', ipSerialNo: 14 },
+        { id: 'bial13-15', name: 'Keilingthanga', ipSerialNo: 15 },
+        { id: 'bial13-17', name: 'Zenngaihdimi', ipSerialNo: 17 },
+        { id: 'bial13-18', name: 'Ginsuanpianga', ipSerialNo: 18 },
+        { id: 'bial13-19', name: 'Khamliana', ipSerialNo: 19 },
+        { id: 'bial13-20', name: 'Engthangkima', ipSerialNo: 20 },
+        { id: 'bial13-21', name: 'Tawnliana', ipSerialNo: 21 },
+        { id: 'bial13-22', name: 'Chingsianmani', ipSerialNo: 22 },
+        { id: 'bial13-23', name: 'Ningzavungi', ipSerialNo: 23 },
+        { id: 'bial13-24', name: 'Thangngaihkama', ipSerialNo: 24 },
+        { id: 'bial13-25', name: 'Lianzakhaia', ipSerialNo: 25 },
+        { id: 'bial13-26', name: 'Ninglianchini', ipSerialNo: 26 },
+        { id: 'bial13-27', name: 'Chingngaihniangi', ipSerialNo: 27 },
+        { id: 'bial13-28', name: 'Lalmuana', ipSerialNo: 28 },
+        { id: 'bial13-29', name: 'Malsawmthangi', ipSerialNo: 29 },
+    ];
+
+
+    const yearlyData: YearlyData = { [currentYear]: {} };
+
+    // Create entries for all months for the current year
+    MONTHS.forEach(month => {
+        // For each month, create a fresh list of families for Bial 1 with zero tithes
+        const bial1Families = bial1FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+        
+        const bial2Families = bial2FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+        
+        const bial3Families = bial3FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial4Families = bial4FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial5Families = bial5FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial6Families = bial6FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial7Families = bial7FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial8Families = bial8FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial10Families = bial10FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial11Families = bial11FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial12Families = bial12FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        const bial13Families = bial13FamilyTemplates.map(family => ({
+            ...family,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 }
+        }));
+
+        yearlyData[currentYear][month] = {
+            "Upa Bial 1": bial1Families,
+            "Upa Bial 2": bial2Families,
+            "Upa Bial 3": bial3Families,
+            "Upa Bial 4": bial4Families,
+            "Upa Bial 5": bial5Families,
+            "Upa Bial 6": bial6Families,
+            "Upa Bial 7": bial7Families,
+            "Upa Bial 8": bial8Families,
+            "Upa Bial 10": bial10Families,
+            "Upa Bial 11": bial11Families,
+            "Upa Bial 12": bial12Families,
+            "Upa Bial 13": bial13Families,
+        };
+    });
+    
+    return yearlyData;
 };
 
 const getDatabase = (): YearlyData => {
@@ -283,9 +801,22 @@ const getUsers = (): User[] => {
         // Add a default user if none exist
         if (!users) {
             // NOTE: In a real app, never store plain text passwords. This is a mock.
-            const defaultUser: User = { id: '1', name: 'Admin', phone: 'admin', passwordHash: 'admin' };
-            localStorage.setItem(USERS_DB_KEY, JSON.stringify([defaultUser]));
-            return [defaultUser];
+            const defaultUsers: User[] = [
+                { id: '1', name: 'Admin', phone: 'admin', passwordHash: 'admin', assignedBial: null }
+            ];
+
+            for (let i = 1; i <= 13; i++) {
+                defaultUsers.push({
+                    id: `bial-${i}`,
+                    name: `Upa Bial ${i} Manager`,
+                    phone: `bial${i}`,
+                    passwordHash: `bial${i}`,
+                    assignedBial: `Upa Bial ${i}`
+                });
+            }
+
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify(defaultUsers));
+            return defaultUsers;
         }
         return JSON.parse(users);
     } catch (error) {
@@ -305,9 +836,8 @@ export const login = async (phone: string, password: string): Promise<{ token: s
     if (user) {
         const token = `mock-token-${user.id}-${Date.now()}`;
         
-        // The token is no longer saved to the central user record, allowing multiple sessions.
-        // It's only given to the client to be stored locally.
         localStorage.setItem(AUTH_TOKEN_KEY, token);
+        localStorage.setItem('assignedBial', JSON.stringify(user.assignedBial));
         return { token };
     } else {
         throw new Error("Invalid phone number or password.");
@@ -327,6 +857,7 @@ export const register = async (name: string, phone: string, password: string): P
         name: name.trim(),
         phone: phone.trim(),
         passwordHash: password.trim(), // Storing plaintext for demo purposes
+        assignedBial: null, // New users are not assigned to a bial by default
     };
 
     users.push(newUser);
@@ -379,8 +910,20 @@ export const checkAuth = (): boolean => {
     }
 };
 
+export const getAssignedBial = (): string | null => {
+    try {
+        const bial = localStorage.getItem('assignedBial');
+        // Check if bial is not undefined or null before parsing
+        return bial ? JSON.parse(bial) : null;
+    } catch (e) {
+        // If parsing fails (e.g., old format), clear it for safety
+        localStorage.removeItem('assignedBial');
+        return null;
+    }
+};
+
+
 export const logout = () => {
-    // We just need to remove the token from the current device's storage.
-    // There is no central session token to clear anymore.
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem('assignedBial');
 };

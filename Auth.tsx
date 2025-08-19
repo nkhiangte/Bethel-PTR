@@ -3,8 +3,25 @@ import App from './App.tsx';
 import { LoginPage } from './components/LoginPage.tsx';
 import * as api from './api.ts';
 
+interface AuthState {
+    isAuthenticated: boolean;
+    assignedBial: string | null;
+}
+
+const getAuthState = (): AuthState => {
+    const isAuthenticated = api.checkAuth();
+    // If not authenticated, don't bother checking for a bial
+    if (!isAuthenticated) {
+        return { isAuthenticated: false, assignedBial: null };
+    }
+    return {
+        isAuthenticated: true,
+        assignedBial: api.getAssignedBial(),
+    };
+};
+
 const Auth: React.FC = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(() => api.checkAuth());
+    const [auth, setAuth] = useState<AuthState>(getAuthState);
     const [storageError, setStorageError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -17,12 +34,12 @@ const Auth: React.FC = () => {
     }, []);
 
     const handleLoginSuccess = () => {
-        setIsAuthenticated(true);
+        setAuth(getAuthState());
     };
 
     const handleLogout = () => {
         api.logout();
-        setIsAuthenticated(false);
+        setAuth({ isAuthenticated: false, assignedBial: null });
     };
 
     if (storageError) {
@@ -38,7 +55,7 @@ const Auth: React.FC = () => {
 
     return (
          <div className="min-h-screen bg-sky-100 text-slate-800 antialiased">
-            {isAuthenticated ? <App onLogout={handleLogout} /> : <LoginPage onLoginSuccess={handleLoginSuccess} />}
+            {auth.isAuthenticated ? <App onLogout={handleLogout} assignedBial={auth.assignedBial} /> : <LoginPage onLoginSuccess={handleLoginSuccess} />}
          </div>
     );
 };

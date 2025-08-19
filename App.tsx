@@ -26,9 +26,10 @@ const YEARS = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
 interface AppProps {
   onLogout: () => void;
+  assignedBial: string | null;
 }
 
-const App: React.FC<AppProps> = ({ onLogout }) => {
+const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(null);
@@ -53,6 +54,14 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
     setView('entry');
     setError(null);
   }, []);
+
+  // Effect to auto-select bial for restricted users
+  useEffect(() => {
+    if (assignedBial && selectedMonth && !selectedUpaBial) {
+        setSelectedUpaBial(assignedBial);
+    }
+  }, [assignedBial, selectedMonth, selectedUpaBial]);
+
 
   // Effect to fetch families when selection is complete
   useEffect(() => {
@@ -245,6 +254,14 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
     handleCloseTitheModal();
   }, [selectedYear, selectedMonth, selectedUpaBial]);
   
+  const handleBackFromTitheTable = useCallback(() => {
+    if (assignedBial) {
+        setSelectedMonth(null);
+    }
+    setSelectedUpaBial(null);
+  }, [assignedBial]);
+
+
   const renderContent = () => {
     if (error) {
         return <div className="text-center p-8 bg-red-100 text-red-700 rounded-lg">{error}</div>
@@ -294,6 +311,11 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
     }
 
     if (!selectedUpaBial) {
+        if (assignedBial) {
+            // This should only show for a moment while the effect sets the state.
+            return <LoadingSpinner message={`Loading your dashboard for ${assignedBial}...`} />;
+        }
+        // Only admins see this selection screen
         return <UpaBialSelection 
                     upaBials={UPA_BIALS} 
                     year={selectedYear} 
@@ -309,9 +331,9 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
         <>
             <div className="flex items-center justify-between mb-6">
                  <div className="flex items-center">
-                    <button onClick={() => setSelectedUpaBial(null)} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-2 sm:mr-4">
+                    <button onClick={handleBackFromTitheTable} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-2 sm:mr-4">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                        <span className="sr-only">Back to Upa Bial Selection</span>
+                        <span className="sr-only">Back to Previous Step</span>
                     </button>
                     <div className="text-sm sm:text-base text-slate-600">
                         <span
