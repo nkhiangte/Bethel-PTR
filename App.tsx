@@ -139,84 +139,100 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  const handleTitheChange = useCallback(async (familyId: string, category: TitheCategory, value: number) => {
+  const handleTitheChange = useCallback((familyId: string, category: TitheCategory, value: number) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
     
-    const originalFamilies = [...families];
-    let familyToUpdate = families.find(f => f.id === familyId);
-    if (!familyToUpdate) return;
-    
-    const updatedFamily = { ...familyToUpdate, tithe: { ...familyToUpdate.tithe, [category]: value }};
+    setFamilies(prevFamilies => {
+        const familyIndex = prevFamilies.findIndex(f => f.id === familyId);
+        if (familyIndex === -1) return prevFamilies;
 
-    setFamilies(prev => prev.map(f => f.id === familyId ? updatedFamily : f)); // Optimistic update
-    
-    try {
-        await api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: updatedFamily.tithe });
-    } catch (e) {
-        setError("Failed to save changes. Reverting.");
-        setFamilies(originalFamilies); // Revert on error
-    }
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+        const updatedFamily = {
+            ...prevFamilies[familyIndex],
+            tithe: { ...prevFamilies[familyIndex].tithe, [category]: value }
+        };
+
+        const newFamilies = [...prevFamilies];
+        newFamilies[familyIndex] = updatedFamily;
+
+        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: updatedFamily.tithe })
+            .catch(() => {
+                setError("Failed to save changes. Reverting.");
+                setFamilies(prevFamilies);
+            });
+            
+        return newFamilies;
+    });
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
   
-  const handleRemoveFamily = useCallback(async (familyId: string) => {
+  const handleRemoveFamily = useCallback((familyId: string) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
-    const originalFamilies = [...families];
-    setFamilies(prev => prev.filter(f => f.id !== familyId)); // Optimistic update
+    setFamilies(prevFamilies => {
+        const newFamilies = prevFamilies.filter(f => f.id !== familyId);
 
-    try {
-        await api.removeFamily(selectedYear, selectedMonth, selectedUpaBial, familyId);
-    } catch(e) {
-        setError("Failed to remove family. Reverting.");
-        setFamilies(originalFamilies); // Revert on error
-    }
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+        api.removeFamily(selectedYear, selectedMonth, selectedUpaBial, familyId)
+            .catch(() => {
+                setError("Failed to remove family. Reverting.");
+                setFamilies(prevFamilies);
+            });
+        
+        return newFamilies;
+    });
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  const handleUpdateFamilyName = useCallback(async (familyId: string, newName: string) => {
+  const handleUpdateFamilyName = useCallback((familyId: string, newName: string) => {
     if (newName.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
+    const trimmedName = newName.trim();
 
-    const originalFamilies = [...families];
-    setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, name: newName.trim() } : f));
+    setFamilies(prevFamilies => {
+        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f);
 
-    try {
-        await api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { name: newName.trim() });
-    } catch (e) {
-        setError("Failed to update name. Reverting.");
-        setFamilies(originalFamilies);
-    }
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { name: trimmedName })
+            .catch(() => {
+                setError("Failed to update name. Reverting.");
+                setFamilies(prevFamilies);
+            });
 
-  const handleUpdateIpSerialNo = useCallback(async (familyId: string, newSerial: number | null) => {
+        return newFamilies;
+    });
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
+
+  const handleUpdateIpSerialNo = useCallback((familyId: string, newSerial: number | null) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
-    const originalFamilies = [...families];
-    setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f));
+    setFamilies(prevFamilies => {
+        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f);
 
-    try {
-        await api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { ipSerialNo: newSerial });
-    } catch (e) {
-        setError("Failed to update serial number. Reverting.");
-        setFamilies(originalFamilies);
-    }
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { ipSerialNo: newSerial })
+            .catch(() => {
+                setError("Failed to update serial number. Reverting.");
+                setFamilies(prevFamilies);
+            });
+
+        return newFamilies;
+    });
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
 
   const handleOpenTitheModal = (family: Family) => setFamilyForModal(family);
   const handleCloseTitheModal = () => setFamilyForModal(null);
 
-  const handleSaveTitheModal = useCallback(async (familyId: string, newTithe: Tithe) => {
+  const handleSaveTitheModal = useCallback((familyId: string, newTithe: Tithe) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
-    const originalFamilies = [...families];
-    setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f));
+    setFamilies(prevFamilies => {
+        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f);
+
+        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe })
+            .catch(() => {
+                setError("Failed to save tithe details. Reverting.");
+                setFamilies(prevFamilies);
+            });
+
+        return newFamilies;
+    });
+
     handleCloseTitheModal();
-    
-    try {
-        await api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe });
-    } catch (e) {
-        setError("Failed to save tithe details. Reverting.");
-        setFamilies(originalFamilies);
-    }
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
   
   const renderContent = () => {
     if (error) {
