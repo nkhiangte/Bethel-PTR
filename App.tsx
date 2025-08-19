@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { AddFamilyForm } from './components/AddFamilyForm.tsx';
 import { Header } from './components/Header.tsx';
@@ -114,22 +115,31 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
   const handleAddFamily = useCallback(async (name: string) => {
     if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
     setIsLoading(true);
+    setError(null);
     try {
       await api.addFamily(selectedYear, selectedMonth, selectedUpaBial, name.trim());
       const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
       setFamilies(updatedFamilies);
-    } catch (e) {
-      setError('Failed to add family.');
+    } catch (e: any) {
+      setError(e.message || 'Failed to add family.');
     } finally {
       setIsLoading(false);
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-   const handleImportFamilies = useCallback(async (names: string[]) => {
+   const handleImportFamilies = useCallback(async (names: string[], onResult: (message: string) => void) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
     setIsLoading(true);
+    setError(null);
     try {
-        await api.importFamilies(selectedYear, selectedMonth, selectedUpaBial, names);
+        const { added, skipped } = await api.importFamilies(selectedYear, selectedMonth, selectedUpaBial, names);
+        
+        let message = `${added} new families imported successfully!`;
+        if (skipped > 0) {
+            message += `\n${skipped} families were skipped because they already exist or were duplicates in the file.`;
+        }
+        onResult(message);
+
         const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
         setFamilies(updatedFamilies);
     } catch (e) {
@@ -154,6 +164,7 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
         const newFamilies = [...prevFamilies];
         newFamilies[familyIndex] = updatedFamily;
 
+        setError(null);
         api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: updatedFamily.tithe })
             .catch(() => {
                 setError("Failed to save changes. Reverting.");
@@ -170,6 +181,7 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
     setFamilies(prevFamilies => {
         const newFamilies = prevFamilies.filter(f => f.id !== familyId);
 
+        setError(null);
         api.removeFamily(selectedYear, selectedMonth, selectedUpaBial, familyId)
             .catch(() => {
                 setError("Failed to remove family. Reverting.");
@@ -184,34 +196,32 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
     if (newName.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
     const trimmedName = newName.trim();
 
-    setFamilies(prevFamilies => {
-        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f);
+    setError(null);
+    const originalFamilies = families; // Keep a copy for revert
+    
+    setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f));
 
-        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { name: trimmedName })
-            .catch(() => {
-                setError("Failed to update name. Reverting.");
-                setFamilies(prevFamilies);
-            });
-
-        return newFamilies;
-    });
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+    api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { name: trimmedName })
+        .catch((e: any) => {
+            setError(e.message || "Failed to update name. Reverting.");
+            setFamilies(originalFamilies);
+        });
+  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
 
   const handleUpdateIpSerialNo = useCallback((familyId: string, newSerial: number | null) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
-    setFamilies(prevFamilies => {
-        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f);
+    setError(null);
+    const originalFamilies = families; // Keep a copy for revert
 
-        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { ipSerialNo: newSerial })
-            .catch(() => {
-                setError("Failed to update serial number. Reverting.");
-                setFamilies(prevFamilies);
-            });
-
-        return newFamilies;
-    });
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+    setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f));
+    
+    api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { ipSerialNo: newSerial })
+        .catch(() => {
+            setError("Failed to update serial number. Reverting.");
+            setFamilies(originalFamilies);
+        });
+  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
 
   const handleOpenTitheModal = (family: Family) => setFamilyForModal(family);
   const handleCloseTitheModal = () => setFamilyForModal(null);
@@ -221,7 +231,8 @@ const App: React.FC<AppProps> = ({ onLogout }) => {
 
     setFamilies(prevFamilies => {
         const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f);
-
+        
+        setError(null);
         api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe })
             .catch(() => {
                 setError("Failed to save tithe details. Reverting.");

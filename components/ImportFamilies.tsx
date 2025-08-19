@@ -1,8 +1,9 @@
+
 import React, { useRef } from 'react';
 import { read, utils } from 'xlsx';
 
 interface ImportFamiliesProps {
-  onImport: (names: string[]) => void;
+  onImport: (names: string[], onResult: (message: string) => void) => void;
 }
 
 const ExcelIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -38,8 +39,9 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport }) => {
           .map(name => name.trim());
 
         if (names.length > 0) {
-            onImport(names);
-            alert(`${names.length} families imported successfully!`);
+            onImport(names, (message) => {
+                alert(message);
+            });
         } else {
             alert('No valid family names found in the first column of the Excel sheet.');
         }

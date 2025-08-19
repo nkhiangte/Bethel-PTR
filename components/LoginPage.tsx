@@ -3,11 +3,9 @@ import * as api from '../api.ts';
 
 interface LoginPageProps {
     onLoginSuccess: () => void;
-    onSwitchToRegister: () => void;
-    onSwitchToForgotPassword: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onSwitchToRegister, onSwitchToForgotPassword }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -75,12 +73,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onSwitchTo
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end text-sm">
-                        <button type="button" onClick={onSwitchToForgotPassword} className="font-medium text-amber-600 hover:text-amber-500" disabled={isLoading}>
-                            Forgot your password?
-                        </button>
-                    </div>
-
                     <div>
                         <button
                             type="submit"
@@ -91,12 +83,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onSwitchTo
                         </button>
                     </div>
                 </form>
-                 <p className="mt-2 text-center text-sm text-slate-600">
-                    Don't have an account?{' '}
-                    <button type="button" onClick={onSwitchToRegister} className="font-medium text-amber-600 hover:text-amber-500" disabled={isLoading}>
-                        Register here
-                    </button>
-                </p>
             </div>
         </div>
     );
