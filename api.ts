@@ -849,35 +849,52 @@ const getUsers = (): User[] => {
     try {
         const usersJson = localStorage.getItem(USERS_DB_KEY);
         let users: User[] = usersJson ? JSON.parse(usersJson) : [];
-        let hasChanges = !usersJson;
+        let hasChanges = false;
 
-        // Ensure admin user exists and has correct properties
+        // --- Admin User ---
         let adminUser = users.find(u => u.phone === 'admin');
         if (!adminUser) {
+            // Add if doesn't exist
             users.push({ id: '1', name: 'Admin', phone: 'admin', passwordHash: 'admin', assignedBial: null });
             hasChanges = true;
-        } else if (adminUser.assignedBial !== null) { // Data correction
-             adminUser.assignedBial = null;
-             hasChanges = true;
+        } else {
+            // Correct if exists but is wrong
+            if (adminUser.passwordHash !== 'admin' || adminUser.assignedBial !== null) {
+                adminUser.passwordHash = 'admin';
+                adminUser.assignedBial = null;
+                hasChanges = true;
+            }
         }
 
-        // Ensure bial manager users exist
+        // --- Bial Manager Users ---
         for (let i = 1; i <= 13; i++) {
             const bialPhone = `bial${i}`;
             const bialName = `Upa Bial ${i}`;
-            if (!users.find(u => u.phone === bialPhone)) {
+            const bialPassword = `bial${i}`; // password is same as username
+
+            let bialUser = users.find(u => u.phone === bialPhone);
+            if (!bialUser) {
+                // Add if doesn't exist
                 users.push({
                     id: `bial-${i}`,
                     name: `${bialName} Manager`,
                     phone: bialPhone,
-                    passwordHash: bialPhone,
+                    passwordHash: bialPassword,
                     assignedBial: bialName
                 });
                 hasChanges = true;
+            } else {
+                // Correct if exists but is wrong
+                if (bialUser.passwordHash !== bialPassword || bialUser.assignedBial !== bialName) {
+                    bialUser.passwordHash = bialPassword;
+                    bialUser.assignedBial = bialName;
+                    hasChanges = true;
+                }
             }
         }
         
-        if(hasChanges) {
+        // Save back to localStorage ONLY if there were changes or if it was the first run
+        if(hasChanges || !usersJson) {
             localStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
         }
         
@@ -885,7 +902,7 @@ const getUsers = (): User[] => {
 
     } catch (error) {
         console.error("Error managing users database, resetting to defaults.", error);
-        // If parsing fails or something else goes wrong, reset to a known good state.
+        // Fallback logic for corrupted data
         const defaultUsers: User[] = [
             { id: '1', name: 'Admin', phone: 'admin', passwordHash: 'admin', assignedBial: null }
         ];
