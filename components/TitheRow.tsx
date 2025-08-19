@@ -26,7 +26,7 @@ const TitheInput: React.FC<{
         onKeyDown={onKeyDown}
         min="0"
         placeholder="0"
-        className="w-24 sm:w-28 text-right px-3 py-2 bg-sky-100 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-black"
+        className="w-20 sm:w-28 text-right px-2 py-2 sm:px-3 bg-sky-100 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-black"
     />
 );
 
@@ -175,7 +175,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
 
   return (
     <tr className="hover:bg-sky-100/50 transition-colors duration-200 group">
-      <td className="px-2 py-4 sm:px-6 whitespace-nowrap">
+      <td className="px-2 py-4 sm:px-4 whitespace-nowrap">
         {isEditing ? (
             <input 
                 ref={editInputRef}
@@ -195,7 +195,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
               </button>
               <button
                 onClick={handleClearTithes}
-                className="text-slate-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                className="text-slate-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
                 aria-label={`Clear all tithe entries for ${family.name}`}
                 title="Clear all tithe entries for this family"
               >
@@ -204,7 +204,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
             </div>
         )}
       </td>
-      <td className="px-2 py-4 sm:px-6 whitespace-nowrap">
+      <td className="px-2 py-4 sm:px-4 whitespace-nowrap">
         {isEditing ? (
             <input 
                 ref={serialInputRef}
@@ -220,7 +220,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
              <span className="text-sm text-black">{family.ipSerialNo ?? 'N/A'}</span>
         )}
       </td>
-      <td className="px-2 py-4 sm:px-6 whitespace-nowrap text-right">
+      <td className="px-2 py-4 sm:px-4 whitespace-nowrap text-right">
         <TitheInput 
             inputRef={pathianRamRef}
             value={family.tithe.pathianRam} 
@@ -228,7 +228,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
             onKeyDown={e => handleTitheInputKeyDown(e, 'pathianRam')}
         />
       </td>
-      <td className="px-2 py-4 sm:px-6 whitespace-nowrap text-right">
+      <td className="px-2 py-4 sm:px-4 whitespace-nowrap text-right">
         <TitheInput 
             inputRef={ramtharRef}
             value={family.tithe.ramthar} 
@@ -236,7 +236,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
             onKeyDown={e => handleTitheInputKeyDown(e, 'ramthar')}
         />
       </td>
-      <td className="px-2 py-4 sm:px-6 whitespace-nowrap text-right">
+      <td className="px-2 py-4 sm:px-4 whitespace-nowrap text-right">
         <TitheInput 
             inputRef={tualchhungRef}
             value={family.tithe.tualchhung} 
@@ -244,10 +244,10 @@ export const TitheRow: React.FC<TitheRowProps> = ({
             onKeyDown={e => handleTitheInputKeyDown(e, 'tualchhung')}
         />
       </td>
-      <td className="px-2 py-4 sm:px-6 whitespace-nowrap text-right text-sm font-semibold text-black">
+      <td className="px-2 py-4 sm:px-4 whitespace-nowrap text-right text-sm font-semibold text-black">
         {formatCurrency(familyTotal)}
       </td>
-      <td className="px-2 py-4 sm:px-6 whitespace-nowrap text-center">
+      <td className="px-2 py-4 sm:px-4 whitespace-nowrap text-center">
         <div className="flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             {isEditing ? (
                 <>

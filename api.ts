@@ -986,7 +986,8 @@ export const checkAuth = (): boolean => {
             localStorage.removeItem(AUTH_TOKEN_KEY);
             return false;
         }
-        const userId = parts[2];
+        // Reconstruct the user ID, which might contain hyphens (e.g., 'bial-1')
+        const userId = parts.slice(2, parts.length - 1).join('-');
         
         const users = getUsers();
         // The check is now just to see if a user with this ID exists.
