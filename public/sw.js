@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bethel-ptr-cache-v2';
+const CACHE_NAME = 'bethel-ptr-cache-v3';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -7,7 +7,11 @@ const URLS_TO_CACHE = [
   '/icon-maskable.svg'
 ];
 
+// Install the service worker and cache the app shell
 self.addEventListener('install', event => {
+  // Force the waiting service worker to become the active service worker.
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -20,49 +24,7 @@ self.addEventListener('install', event => {
   );
 });
 
-self.addEventListener('fetch', event => {
-  // We only want to cache GET requests.
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-
-        // Not in cache, fetch from network, then cache it
-        return fetch(event.request).then(
-          networkResponse => {
-            // Check if we received a valid response
-            if (!networkResponse || networkResponse.status !== 200) {
-              return networkResponse;
-            }
-
-            if (networkResponse.type === 'opaque') {
-                return networkResponse;
-            }
-
-            const responseToCache = networkResponse.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return networkResponse;
-          }
-        ).catch(error => {
-            console.error('Fetching failed:', error);
-            // Optionally, return an offline fallback page here.
-        });
-      })
-  );
-});
-
+// Clean up old caches and take control of clients
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -75,6 +37,68 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Take control of all clients as soon as activated.
+  );
+});
+
+// Serve assets from cache or network
+self.addEventListener('fetch', event => {
+  // We only want to handle GET requests.
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Strategy: Network falling back to cache for HTML navigation requests.
+  // This ensures the user always gets the latest version of the app shell
+  // when online, but can still access the app when offline.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // If the fetch is successful, clone the response and cache it.
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request.url, responseToCache);
+          });
+          return response;
+        })
+        .catch(() => {
+          // If the network request fails (e.g., offline),
+          // serve the main index.html from the cache.
+          return caches.match('/');
+        })
+    );
+    return;
+  }
+
+  // Strategy: Cache first, falling back to network for all other assets
+  // (JS, CSS, images, etc.). This is fast and efficient.
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // If we have a response in the cache, return it.
+        if (response) {
+          return response;
+        }
+
+        // If not in cache, fetch from the network.
+        return fetch(event.request).then(
+          networkResponse => {
+            // Check if we received a valid response
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
+              return networkResponse;
+            }
+
+            // Clone the response and cache it for future requests.
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+
+            return networkResponse;
+          }
+        );
+      })
   );
 });
