@@ -1,6 +1,6 @@
 
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -46,6 +46,20 @@ const PrintIcon: React.FC<{className?: string}> = ({ className }) => (
 
 
 export const YearlyReport: React.FC<YearlyReportProps> = ({ data, upaBials, year, onBack, onGoToDashboard }) => {
+    const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+    const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+     useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+                setIsActionsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     const grandTotals = useMemo(() => {
         const totals = { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 };
@@ -174,27 +188,35 @@ export const YearlyReport: React.FC<YearlyReportProps> = ({ data, upaBials, year
                         upaBials={upaBials}
                         period={`the year ${year}`}
                     />
-                    <button
-                        onClick={handleExport}
-                        className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all shadow-md"
-                    >
-                        <ExportIcon className="w-5 h-5" />
-                        Export to Excel
-                    </button>
-                     <button
-                        onClick={handleExportPdf}
-                        className="flex items-center gap-2 bg-red-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all shadow-md"
-                    >
-                        <PdfIcon className="w-5 h-5" />
-                        Export to PDF
-                    </button>
-                     <button
-                        onClick={handlePrint}
-                        className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-md"
-                    >
-                        <PrintIcon className="w-5 h-5" />
-                        Print
-                    </button>
+                     <div className="relative" ref={actionsMenuRef}>
+                        <button
+                            onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+                            className="flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all shadow-md"
+                        >
+                            <span>Export & Print</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isActionsMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                        {isActionsMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-56 bg-sky-50 rounded-lg shadow-xl z-20 border border-slate-200">
+                                <div className="py-1">
+                                    <button onClick={() => { handleExport(); setIsActionsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-100 hover:text-slate-900 transition-colors">
+                                        <ExportIcon className="w-5 h-5 text-green-600" />
+                                        <span>Export to Excel</span>
+                                    </button>
+                                    <button onClick={() => { handleExportPdf(); setIsActionsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-100 hover:text-slate-900 transition-colors">
+                                        <PdfIcon className="w-5 h-5 text-red-600" />
+                                        <span>Export to PDF</span>
+                                    </button>
+                                    <button onClick={() => { handlePrint(); setIsActionsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-100 hover:text-slate-900 transition-colors">
+                                        <PrintIcon className="w-5 h-5 text-blue-600" />
+                                        <span>Print</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
