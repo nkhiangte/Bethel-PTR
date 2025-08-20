@@ -1,4 +1,4 @@
-import type { YearlyData, Family, Tithe, AggregateReportData, BialTotal, User, FamilyYearlyTitheData } from './types.ts';
+import type { YearlyData, Family, Tithe, AggregateReportData, BialTotal, User, FamilyYearlyTitheData, YearlyFamilyTotal } from './types.ts';
 
 // --- CONFIGURATION ---
 const SIMULATED_LATENCY_MS = 200;
@@ -875,6 +875,41 @@ export const fetchFamilyYearlyData = async (year: number, familyId: string): Pro
     });
 
     return { data: yearlyData, familyInfo };
+};
+
+export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): Promise<YearlyFamilyTotal[]> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const yearData = db[year];
+
+    if (!yearData) return [];
+
+    const familyTotals: { [familyId: string]: YearlyFamilyTotal } = {};
+
+    MONTHS.forEach(month => {
+        const familiesInMonth = yearData[month]?.[upaBial] ?? [];
+
+        familiesInMonth.forEach(family => {
+            if (!familyTotals[family.id]) {
+                familyTotals[family.id] = {
+                    id: family.id,
+                    name: family.name,
+                    ipSerialNo: family.ipSerialNo,
+                    tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 },
+                };
+            }
+            // Update name and serial in case it changed during the year.
+            // This takes the value from the latest month processed.
+            familyTotals[family.id].name = family.name;
+            familyTotals[family.id].ipSerialNo = family.ipSerialNo;
+
+            familyTotals[family.id].tithe.pathianRam += family.tithe.pathianRam;
+            familyTotals[family.id].tithe.ramthar += family.tithe.ramthar;
+            familyTotals[family.id].tithe.tualchhung += family.tithe.tualchhung;
+        });
+    });
+
+    return Object.values(familyTotals).sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };
 
 

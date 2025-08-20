@@ -52,3 +52,8 @@ export interface User {
 export interface FamilyYearlyTitheData {
   [month: string]: Tithe;
 }
+
+// For Bial Yearly Report (list of families with yearly totals)
+export interface YearlyFamilyTotal extends Omit<Family, 'tithe'> {
+    tithe: Tithe;
+}

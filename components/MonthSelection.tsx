@@ -6,10 +6,11 @@ interface MonthSelectionProps {
   onSelectMonth: (month: string) => void;
   onBack: () => void;
   onViewYearlyReport: () => void;
+  onViewBialYearlyReport: () => void;
   onGoToDashboard: () => void;
 }
 
-export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, onSelectMonth, onBack, onViewYearlyReport, onGoToDashboard }) => {
+export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, onSelectMonth, onBack, onViewYearlyReport, onViewBialYearlyReport, onGoToDashboard }) => {
   return (
     <div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
@@ -23,7 +24,7 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
                   <p className="text-slate-500">Or view the report for the entire year.</p>
                 </div>
             </div>
-            <div className="flex flex-shrink-0 gap-2">
+            <div className="flex flex-col sm:flex-row flex-shrink-0 gap-2">
                 <button
                     onClick={onGoToDashboard}
                     className="flex items-center gap-2 bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all text-sm"
@@ -38,7 +39,13 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
                     onClick={onViewYearlyReport}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-200 ease-in-out shadow-md"
                 >
-                    View Yearly Report
+                    View Aggregate Yearly Report
+                </button>
+                <button
+                    onClick={onViewBialYearlyReport}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-200 ease-in-out shadow-md"
+                >
+                    View Bial Yearly Report
                 </button>
             </div>
         </div>

@@ -139,7 +139,8 @@ export const AggregateReport: React.FC<AggregateReportProps> = ({ data, upaBials
             }
         });
 
-        const fileName = `Tithe_Report_${month}_${year}.pdf`;
+        const monthAbbreviation = month.substring(0, 3);
+        const fileName = `PathianRam_Report_Thla_${monthAbbreviation}_${year}.pdf`;
         doc.save(fileName);
     };
 

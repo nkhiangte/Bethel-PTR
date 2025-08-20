@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -15,6 +17,7 @@ import { UpaBialSelection } from './components/UpaBialSelection.tsx';
 import { YearlyReport } from './components/YearlyReport.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
+import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
 import * as api from './api.ts';
 import type { Family, TitheCategory, Tithe, AggregateReportData } from './types.ts';
 
@@ -56,7 +59,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   
   const [familyForModal, setFamilyForModal] = useState<Family | null>(null);
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport'>('entry');
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport'>('entry');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -401,7 +404,9 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
             },
         });
 
-        doc.save(`Tithe_Details_${selectedUpaBial.replace(/ /g, '_')}_${selectedMonth}_${selectedYear}.pdf`);
+        const monthAbbreviation = selectedMonth.substring(0, 3);
+        const fileName = `PathianRam_${selectedUpaBial.replace(/ /g, '_')}_${monthAbbreviation}_${selectedYear}.pdf`;
+        doc.save(fileName);
     };
 
 
@@ -450,6 +455,18 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         }
         return null;
     }
+
+    if (view === 'bialYearlyReport') {
+        if (selectedYear && selectedUpaBial) {
+            return <BialYearlyFamilyReport
+                      year={selectedYear}
+                      upaBial={selectedUpaBial}
+                      onBack={() => setView('entry')}
+                      onGoToDashboard={clearSelections}
+                    />;
+        }
+        return null;
+    }
     
     // Admin Flow
     if (!assignedBial) {
@@ -474,6 +491,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                         onSelectMonth={setSelectedMonth} 
                         onBack={() => setSelectedYear(null)}
                         onViewYearlyReport={() => setView('yearlyReport')}
+                        onViewBialYearlyReport={() => setView('bialYearlyReport')}
                         onGoToDashboard={clearSelections}
                     />;
         }
@@ -496,6 +514,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                         onSelectMonth={setSelectedMonth} 
                         onBack={() => setSelectedYear(null)}
                         onViewYearlyReport={() => setView('yearlyReport')}
+                        onViewBialYearlyReport={() => setView('bialYearlyReport')}
                         onGoToDashboard={clearSelections}
                     />;
         }
@@ -603,8 +622,19 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   return (
     <>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="no-print">
-            <Header onLogout={onLogout} />
+        <div className="no-print relative">
+            <Header onLogoClick={clearSelections} />
+            <div className="absolute top-0 right-0">
+                 <button
+                  onClick={onLogout}
+                  className="flex items-center gap-2 bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-all shadow-md"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+                    </svg>
+                  <span>Logout</span>
+                </button>
+            </div>
         </div>
         <main className="mt-8">
           <div className="bg-sky-50 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 min-h-[50vh]">

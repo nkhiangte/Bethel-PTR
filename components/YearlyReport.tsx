@@ -138,7 +138,7 @@ export const YearlyReport: React.FC<YearlyReportProps> = ({ data, upaBials, year
             }
         });
 
-        const fileName = `Tithe_Report_${year}.pdf`;
+        const fileName = `PathianRam_Report_Kum_${year}.pdf`;
         doc.save(fileName);
     };
 

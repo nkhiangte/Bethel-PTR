@@ -1,4 +1,6 @@
 
+
+
 import React from 'react';
 
 const ChurchIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -8,39 +10,32 @@ const ChurchIcon: React.FC<{className?: string}> = ({ className }) => (
 );
 
 interface HeaderProps {
-    onLogout?: () => void;
+    onLogoClick: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
+export const Header: React.FC<HeaderProps> = ({ onLogoClick }) => {
   return (
-    <header className="text-center relative">
-       <div className="flex justify-center items-center gap-2 sm:gap-4">
-        <ChurchIcon className="w-12 h-12 text-amber-600" />
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 tracking-tight">
+    <header className="text-center">
+       <div 
+        className="inline-flex justify-center items-center gap-2 sm:gap-4 cursor-pointer group"
+        onClick={onLogoClick}
+        role="button"
+        aria-label="Go to dashboard"
+       >
+        <ChurchIcon className="w-12 h-12 text-amber-600 group-hover:text-amber-700 transition-colors" />
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 tracking-tight group-hover:text-slate-800 transition-colors">
             Bethel PTR
         </h1>
       </div>
       <img 
         src="https://mizoramsynod.org/storage/photo/sBy7mWkYSqSQXfitakOsxKhJ08SoyKifJfOa0db8.jpg" 
         alt="Mizoram Synod Logo"
-        className="mx-auto mt-6 h-24 w-auto"
+        className="mx-auto mt-6 h-24 w-auto cursor-pointer"
+        onClick={onLogoClick}
       />
       <p className="mt-6 text-lg text-slate-600 max-w-2xl mx-auto">
         Track and manage tithe contributions from families for each month and Upa Bial.
       </p>
-      {onLogout && (
-          <div className="absolute top-0 right-0">
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-2 bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-all shadow-md"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                </svg>
-              <span>Logout</span>
-            </button>
-          </div>
-        )}
     </header>
   );
 };
