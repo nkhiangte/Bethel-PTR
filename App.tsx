@@ -14,6 +14,7 @@ import { MonthSelection } from './components/MonthSelection.tsx';
 import { UpaBialSelection } from './components/UpaBialSelection.tsx';
 import { YearlyReport } from './components/YearlyReport.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
+import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import * as api from './api.ts';
 import type { Family, TitheCategory, Tithe, AggregateReportData } from './types.ts';
 
@@ -54,7 +55,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   const [yearlyReportData, setYearlyReportData] = useState<AggregateReportData | null>(null);
   
   const [familyForModal, setFamilyForModal] = useState<Family | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport'>('entry');
+  const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport'>('entry');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +71,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setFamilies([]);
     setMonthlyReportData(null);
     setYearlyReportData(null);
+    setFamilyForReport(null);
     setView('entry');
     setError(null);
   }, [assignedBial]);
@@ -297,6 +300,13 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setSelectedMonth(null);
   }, []);
 
+  const handleViewFamilyReport = useCallback((family: {id: string, name: string}) => {
+    if (selectedYear) {
+        setFamilyForReport(family);
+        setView('familyReport');
+    }
+  }, [selectedYear]);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'decimal' }).format(value);
   };
@@ -423,6 +433,18 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                       upaBials={UPA_BIALS}
                       year={selectedYear}
                       onBack={() => setView('entry')}
+                      onGoToDashboard={clearSelections}
+                    />;
+        }
+        return null;
+    }
+
+    if (view === 'familyReport') {
+        if (familyForReport && selectedYear) {
+            return <FamilyYearlyReport
+                      familyId={familyForReport.id}
+                      year={selectedYear}
+                      onBack={() => { setView('entry'); setFamilyForReport(null); }}
                       onGoToDashboard={clearSelections}
                     />;
         }
@@ -570,6 +592,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                     onUpdateIpSerialNo={handleUpdateIpSerialNo}
                     onOpenTitheModal={handleOpenTitheModal}
                     onClearTithe={handleClearTithe}
+                    onViewFamilyReport={handleViewFamilyReport}
                 />
             </div>
         </div>

@@ -13,6 +13,7 @@ interface TitheTableProps {
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: Family) => void;
   onClearTithe: (familyId: string) => void;
+  onViewFamilyReport: (family: {id: string; name: string}) => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -27,7 +28,8 @@ export const TitheTable: React.FC<TitheTableProps> = ({
     onUpdateFamilyName,
     onUpdateIpSerialNo,
     onOpenTitheModal,
-    onClearTithe
+    onClearTithe,
+    onViewFamilyReport
 }) => {
     
   const totals = useMemo(() => {
@@ -95,6 +97,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
                 onUpdateIpSerialNo={onUpdateIpSerialNo}
                 onOpenTitheModal={onOpenTitheModal}
                 onClearTithe={onClearTithe}
+                onViewFamilyReport={onViewFamilyReport}
                 formatCurrency={formatCurrency}
               />
             ))

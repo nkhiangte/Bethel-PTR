@@ -47,3 +47,8 @@ export interface User {
   passwordHash: string; // In a real app, this would be a securely hashed password
   assignedBial: string | null; // e.g., "Upa Bial 1", null for admin
 }
+
+// For Family Yearly Report
+export interface FamilyYearlyTitheData {
+  [month: string]: Tithe;
+}

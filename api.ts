@@ -1,4 +1,4 @@
-import type { YearlyData, Family, Tithe, AggregateReportData, BialTotal, User } from './types.ts';
+import type { YearlyData, Family, Tithe, AggregateReportData, BialTotal, User, FamilyYearlyTitheData } from './types.ts';
 
 // --- CONFIGURATION ---
 const SIMULATED_LATENCY_MS = 200;
@@ -840,6 +840,41 @@ export const fetchYearlyReport = async (year: number): Promise<AggregateReportDa
         if (bialTotalForYear.total > 0) report[bial] = bialTotalForYear;
     });
     return report;
+};
+
+export const fetchFamilyYearlyData = async (year: number, familyId: string): Promise<{ data: FamilyYearlyTitheData, familyInfo: { name: string, ipSerialNo: number | null, upaBial: string } }> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const yearData = db[year];
+
+    if (!yearData) throw new Error("No data found for the selected year.");
+
+    const yearlyData: FamilyYearlyTitheData = {};
+    let familyInfo: { name: string, ipSerialNo: number | null, upaBial: string } | null = null;
+    
+    // Find the family in any month to get their static info and Upa Bial
+    for (const month of MONTHS) {
+        if (yearData[month]) {
+            for (const upaBial of UPA_BIALS) {
+                const family = yearData[month][upaBial]?.find(f => f.id === familyId);
+                if (family) {
+                    familyInfo = { name: family.name, ipSerialNo: family.ipSerialNo, upaBial: upaBial };
+                    break;
+                }
+            }
+        }
+        if (familyInfo) break;
+    }
+
+    if (!familyInfo) throw new Error("Family not found in the selected year.");
+    
+    // Now that we know the Upa Bial, we can collect data more efficiently
+    MONTHS.forEach(month => {
+        const family = yearData[month]?.[familyInfo!.upaBial]?.find(f => f.id === familyId);
+        yearlyData[month] = family ? family.tithe : { pathianRam: 0, ramthar: 0, tualchhung: 0 };
+    });
+
+    return { data: yearlyData, familyInfo };
 };
 
 

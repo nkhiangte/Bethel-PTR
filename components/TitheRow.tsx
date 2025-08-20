@@ -10,6 +10,7 @@ interface TitheRowProps {
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: Family) => void;
   onClearTithe: (familyId: string) => void;
+  onViewFamilyReport: (family: {id: string, name: string}) => void;
   formatCurrency: (value: number) => string;
 }
 
@@ -40,7 +41,13 @@ const CancelIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const ResetIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
+        <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44 .84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
+    </svg>
+);
+
+const ReportIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
     </svg>
 );
 
@@ -52,6 +59,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     onUpdateIpSerialNo,
     onOpenTitheModal,
     onClearTithe,
+    onViewFamilyReport,
     formatCurrency 
 }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -171,7 +179,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
             </td>
             {/* Actions */}
             <td className="px-2 py-3 sm:px-4 text-center no-print">
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-1 sm:gap-2">
                     {isEditing ? (
                         <>
                             <button onClick={handleSaveClick} className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors" title="Save Changes" aria-label="Save family changes">
@@ -183,7 +191,10 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                         </>
                     ) : (
                         <>
-                            <button onClick={handleClearTitheClick} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors" title="Reset Tithes to Zero" aria-label={`Reset tithes for ${family.name}`}>
+                             <button onClick={() => onViewFamilyReport({ id: family.id, name: family.name })} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors" title="View Yearly Report" aria-label={`View yearly report for ${family.name}`}>
+                                <ReportIcon className="w-5 h-5" />
+                            </button>
+                             <button onClick={handleClearTitheClick} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors" title="Reset Tithes to Zero" aria-label={`Reset tithes for ${family.name}`}>
                                 <ResetIcon className="w-5 h-5" />
                             </button>
                             <button onClick={handleEditClick} className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" title="Edit Family Info" aria-label={`Edit info for ${family.name}`}>
