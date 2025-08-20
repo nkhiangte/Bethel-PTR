@@ -170,7 +170,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                 {formatCurrency(familyTotal)}
             </td>
             {/* Actions */}
-            <td className="px-2 py-3 sm:px-4 text-center">
+            <td className="px-2 py-3 sm:px-4 text-center no-print">
                 <div className="flex items-center justify-center gap-2">
                     {isEditing ? (
                         <>

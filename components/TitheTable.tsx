@@ -44,7 +44,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
   }, [families]);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto tithe-print-table">
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-sky-100">
           <tr>
@@ -66,7 +66,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
             <th scope="col" className="px-2 py-3 sm:px-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
               Family Total
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-3 sm:px-4 text-center text-xs font-bold text-slate-600 uppercase tracking-wider no-print">
               Actions
             </th>
           </tr>
@@ -107,7 +107,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
                 <td className="px-2 py-4 sm:px-4 text-right text-sm font-bold text-black">{formatCurrency(totals.ramthar)}</td>
                 <td className="px-2 py-4 sm:px-4 text-right text-sm font-bold text-black">{formatCurrency(totals.tualchhung)}</td>
                 <td className="px-2 py-4 sm:px-4 text-right text-sm font-extrabold text-black">{formatCurrency(totals.grandTotal)}</td>
-                <td className="px-2 py-4 sm:px-4"></td>
+                <td className="px-2 py-4 sm:px-4 no-print"></td>
             </tr>
         </tfoot>
       </table>

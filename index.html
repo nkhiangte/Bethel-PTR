@@ -34,6 +34,9 @@
 
       /* Print-specific styles */
       @media print {
+        body {
+          background-color: #fff;
+        }
         body * {
           visibility: hidden;
         }
@@ -50,10 +53,39 @@
         .no-print {
           display: none !important;
         }
-        /* Ensure table backgrounds print */
-        table, thead, tfoot, tr, td, th {
+        /* Ensure table backgrounds print, useful for aggregate reports */
+        .printable-area table, .printable-area thead, .printable-area tfoot, .printable-area tr, .printable-area td, .printable-area th {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+        }
+
+        /* Specific styles for printing the Tithe Details table */
+        .printable-area .tithe-print-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+        }
+        .printable-area .tithe-print-table th, 
+        .printable-area .tithe-print-table td {
+            border: 1px solid #a0aec0; /* gray-400 */
+            padding: 4px 6px;
+            text-align: left;
+        }
+        .printable-area .tithe-print-table thead th {
+            background-color: #f1f5f9 !important;
+        }
+        .printable-area .tithe-print-table tfoot td {
+            background-color: #e2e8f0 !important;
+        }
+        /* Target S/N column (2nd child) for Tithe Table */
+        .printable-area .tithe-print-table th:nth-child(2), 
+        .printable-area .tithe-print-table td:nth-child(2) {
+            width: 40px;
+        }
+        /* Target numeric columns for right alignment in Tithe Table */
+        .printable-area .tithe-print-table th:nth-child(n+3), 
+        .printable-area .tithe-print-table td:nth-child(n+3) {
+            text-align: right;
         }
       }
     </style>

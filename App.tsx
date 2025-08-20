@@ -40,7 +40,7 @@ const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
     </svg>
 );
 
@@ -343,8 +343,9 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         if (!selectedYear || !selectedMonth || !selectedUpaBial || families.length === 0) return;
 
         const doc = new jsPDF();
+        const title = `${selectedUpaBial.replace('Upa ', '')} Pathian Ram`;
         autoTable(doc, {
-            body: [[`Tithe Details for ${selectedUpaBial}`], [`${selectedMonth} ${selectedYear}`]],
+            body: [[title], [`${selectedMonth} ${selectedYear}`]],
             theme: 'plain',
             styles: { fontSize: 12, halign: 'center' },
         });
@@ -381,10 +382,13 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
             body,
             foot,
             startY: (doc as any).lastAutoTable.finalY + 2,
-            headStyles: { fillColor: [241, 245, 249], textColor: [48, 63, 84], fontStyle: 'bold' },
-            footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold' },
-            styles: { halign: 'right' },
-            columnStyles: { 0: { halign: 'left' }, 1: { halign: 'left' } },
+            headStyles: { fillColor: [241, 245, 249], textColor: [48, 63, 84], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 },
+            footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 },
+            styles: { halign: 'right', lineColor: [203, 213, 225], lineWidth: 0.1 },
+            columnStyles: { 
+                0: { halign: 'left' }, 
+                1: { halign: 'left', cellWidth: 15 }
+            },
         });
 
         doc.save(`Tithe_Details_${selectedUpaBial.replace(/ /g, '_')}_${selectedMonth}_${selectedYear}.pdf`);
@@ -478,8 +482,12 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
 
     // Tithe Entry View
     return (
-        <>
-            <div className="flex items-center justify-between mb-6">
+        <div className="printable-area">
+            <div className="hidden print:block text-center mb-4">
+                <h1 className="text-xl font-bold">{selectedUpaBial?.replace('Upa ', '')} Pathian Ram</h1>
+                <h2 className="text-lg">{selectedMonth} {selectedYear}</h2>
+            </div>
+            <div className="flex items-center justify-between mb-6 no-print">
                  <div className="flex items-center">
                     <button onClick={handleBackFromTitheTable} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-2 sm:mr-4">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -520,7 +528,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                 </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 items-start mb-8 flex-wrap">
+            <div className="flex flex-col sm:flex-row gap-4 items-start mb-8 flex-wrap no-print">
                 <div className="flex-grow w-full sm:w-auto">
                     <AddFamilyForm onAddFamily={handleAddFamily} />
                 </div>
@@ -550,7 +558,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
             </div>
 
             <div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-4">
+                <h2 className="text-2xl font-bold text-slate-800 mb-4 no-print">
                     Pathian Ram
                 </h2>
                 <TitheTable
@@ -564,7 +572,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                     onClearTithe={handleClearTithe}
                 />
             </div>
-        </>
+        </div>
     );
   };
 
@@ -572,13 +580,15 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   return (
     <>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Header onLogout={onLogout} />
+        <div className="no-print">
+            <Header onLogout={onLogout} />
+        </div>
         <main className="mt-8">
           <div className="bg-sky-50 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 min-h-[50vh]">
             {renderContent()}
           </div>
         </main>
-        <footer className="text-center mt-12 text-slate-500 text-sm">
+        <footer className="text-center mt-12 text-slate-500 text-sm no-print">
             <p>Tithe Calculator &copy; {new Date().getFullYear()}. All rights reserved.</p>
         </footer>
       </div>
