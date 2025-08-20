@@ -155,14 +155,18 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
 
     return (
         <div className="printable-area">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div className="hidden print:block text-center mb-4">
+                <h1 className="text-xl font-bold">{`${upaBial} - Kum ${year} Report`}</h1>
+                <h2 className="text-lg">Chhungkaw tin Pathian Ram pek zat kimchang</h2>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 no-print">
                  <div>
                     <h2 className="text-2xl font-bold text-slate-800">Bial Yearly Family Report</h2>
                     <p className="text-slate-600">
                         <span className="font-semibold">{upaBial}</span> for the year <span className="font-semibold">{year}</span>
                     </p>
                 </div>
-                 <div className="flex flex-wrap gap-4 no-print">
+                 <div className="flex flex-wrap gap-4">
                     <button
                         onClick={onGoToDashboard}
                         className="flex items-center gap-2 bg-slate-200 text-slate-800 font-semibold px-4 py-3 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all"
