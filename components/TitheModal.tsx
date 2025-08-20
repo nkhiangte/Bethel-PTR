@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Family, Tithe } from '../types.ts';
 
 interface TitheModalProps {
@@ -6,6 +6,11 @@ interface TitheModalProps {
     onClose: () => void;
     onSave: (familyId: string, newTithe: Tithe) => void;
 }
+
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'decimal' }).format(value);
+};
+
 
 export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave }) => {
     const [tithe, setTithe] = useState<Tithe>({ ...family.tithe });
@@ -56,6 +61,10 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
             onSave(family.id, tithe);
         }
     };
+
+    const totalTithe = useMemo(() => {
+        return tithe.pathianRam + tithe.ramthar + tithe.tualchhung;
+    }, [tithe]);
 
     return (
         <div 
@@ -131,7 +140,18 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
                             className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black"
                         />
                     </div>
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4 pt-4">
+
+                    {/* Total Display */}
+                    <div className="pt-6 mt-6 border-t border-slate-200">
+                        <div className="flex justify-between items-center">
+                            <span className="text-lg font-bold text-slate-700">Total</span>
+                            <span className="text-xl font-extrabold text-slate-900" aria-live="polite">
+                                {formatCurrency(totalTithe)}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
