@@ -22,7 +22,7 @@ export const UpaBialSelection: React.FC<UpaBialSelectionProps> = ({ upaBials, ye
                     </button>
                 )}
                 <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">
-                    {year && month ? `Select Upa Bial for ${month} ${year}` : 'Select an Upa Bial to Begin'}
+                    {year && month ? `Select Upa Bial for ${month} ${year}` : 'Upa bial thlang rawh'}
                 </h2>
             </div>
              <button

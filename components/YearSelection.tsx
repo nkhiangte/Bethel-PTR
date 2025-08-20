@@ -33,7 +33,7 @@ export const YearSelection: React.FC<YearSelectionProps> = ({ years, onSelectYea
                       <span className="sr-only">Back to Previous Step</span>
                   </button>
               )}
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Select a Year</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Kum thlang rawh</h2>
           </div>
       </div>
       <div className="text-center">

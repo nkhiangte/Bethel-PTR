@@ -17,14 +17,14 @@ export const AddFamilyForm: React.FC<AddFamilyFormProps> = ({ onAddFamily }) => 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
       <label htmlFor="familyName" className="sr-only">
-        Family Name
+        Chhungkua
       </label>
       <input
         id="familyName"
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Enter new family name"
+        placeholder="Chhungkua hming thar"
         className="flex-grow w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow"
         required
       />

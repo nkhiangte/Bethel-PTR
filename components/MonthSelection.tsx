@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface MonthSelectionProps {
@@ -20,7 +19,7 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
                     <span className="sr-only">Back to Year Selection</span>
                 </button>
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Select a Month for {year}</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Kum {year} atan A Thla thlang rawn</h2>
                   <p className="text-slate-500">Or view the report for the entire year.</p>
                 </div>
             </div>

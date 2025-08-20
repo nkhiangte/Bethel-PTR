@@ -305,8 +305,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         if (!selectedYear || !selectedMonth || !selectedUpaBial || families.length === 0) return;
 
         const dataToExport = families.map(family => ({
-            'Family Name': family.name,
-            'Ip Serial No.': family.ipSerialNo ?? 'N/A',
+            'Chhungkua': family.name,
+            'S/N': family.ipSerialNo ?? 'N/A',
             'Pathian Ram': family.tithe.pathianRam,
             'Ramthar': family.tithe.ramthar,
             'Tualchhung': family.tithe.tualchhung,
@@ -322,8 +322,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         }, { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 });
 
         const footer = {
-            'Family Name': 'Grand Total',
-            'Ip Serial No.': '',
+            'Chhungkua': 'Grand Total',
+            'S/N': '',
             'Pathian Ram': totals.pathianRam,
             'Ramthar': totals.ramthar,
             'Tualchhung': totals.tualchhung,
@@ -349,7 +349,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
             styles: { fontSize: 12, halign: 'center' },
         });
 
-        const head = [['Family Name', 'Ip Serial No.', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
+        const head = [['Chhungkua', 'S/N', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
         const body = families.map(f => [
             f.name,
             f.ipSerialNo ?? 'N/A',
@@ -551,7 +551,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
 
             <div>
                 <h2 className="text-2xl font-bold text-slate-800 mb-4">
-                    Tithe Records
+                    Pathian Ram
                 </h2>
                 <TitheTable
                     families={families}

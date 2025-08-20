@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import type { Family, TitheCategory } from '../types.ts';
 import { TitheRow } from './TitheRow.tsx';
@@ -48,10 +49,10 @@ export const TitheTable: React.FC<TitheTableProps> = ({
         <thead className="bg-sky-100">
           <tr>
             <th scope="col" className="px-2 py-3 sm:px-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Family Name
+              Chhungkua
             </th>
              <th scope="col" className="px-2 py-3 sm:px-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Ip Serial No.
+              S/N
             </th>
             <th scope="col" className="px-2 py-3 sm:px-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
               Pathian Ram

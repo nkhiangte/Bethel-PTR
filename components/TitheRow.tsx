@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { Family, TitheCategory } from '../types.ts';
 
@@ -81,7 +82,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
         const newSerial = editedSerial.trim() === '' ? null : parseInt(editedSerial, 10);
         
         if (newName === '') {
-            alert('Family name cannot be empty.');
+            alert('Chhungkua hming a ruak thei lo.');
             nameInputRef.current?.focus();
             return;
         }
@@ -109,7 +110,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     };
     
     const handleDeleteClick = () => {
-        if (window.confirm(`Are you sure you want to delete the family "${family.name}"? This action will remove them from all months and cannot be undone.`)) {
+        if (window.confirm(`I chiang chiah em, he chhungkua "${family.name}" hi i paih dawn? Thla zawng zawng atanga paih a ni ang a, siam that leh theih a ni tawh lo ang.`)) {
             onRemoveFamily(family.id);
         }
     };
