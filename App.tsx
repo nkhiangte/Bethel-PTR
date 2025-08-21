@@ -1,9 +1,4 @@
 
-
-
-
-
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -290,19 +285,20 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
 
     const newTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
 
-    setFamilies(prevFamilies => {
-        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f);
-        
-        setError(null);
-        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe })
-            .catch(() => {
-                setError("Failed to clear tithe details. Reverting.");
-                setFamilies(prevFamilies);
-            });
+    // Keep a reference to the original state to revert in case of an error
+    const originalFamilies = families;
 
-        return newFamilies;
-    });
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+    // Optimistically update the UI
+    setFamilies(prev => prev.map(f => (f.id === familyId ? { ...f, tithe: newTithe } : f)));
+
+    // Call the API and handle potential failure
+    setError(null);
+    api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe })
+        .catch(() => {
+            setError("Failed to clear tithe details. Reverting.");
+            setFamilies(originalFamilies);
+        });
+  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
 
   const handleOpenTransferModal = (family: Family) => setFamilyToTransfer(family);
   const handleCloseTransferModal = () => {
