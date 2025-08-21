@@ -1,7 +1,7 @@
 {
   "name": "Bethel PTR",
   "short_name": "BethelPTR",
-  "description": "An application for calculating and tracking tithes given by families in a church.",
+  "description": "Thla tin leh Upa Bial zela chhungkaw sawm a pakhat pek khawmte vawn felna leh enkawlna.",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait-primary",

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bethel-ptr-cache-v4';
+const CACHE_NAME = 'bethel-ptr-cache-v5';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
