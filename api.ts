@@ -796,6 +796,56 @@ export const removeFamily = async (year: number, month: string, upaBial: string,
     saveDatabase(db);
 };
 
+export const transferFamily = async (year: number, familyId: string, sourceUpaBial: string, destinationUpaBial: string): Promise<void> => {
+    await simulateDelay();
+    const db = getDatabase();
+
+    if (!db[year]) throw new Error(`Data for year ${year} not found.`);
+    if (sourceUpaBial === destinationUpaBial) throw new Error("Source and destination bial cannot be the same.");
+
+    let familyToTransfer: Family | null = null;
+
+    // Find the family in any month to get their details
+    for (const month of MONTHS) {
+        const family = db[year][month]?.[sourceUpaBial]?.find(f => f.id === familyId);
+        if (family) {
+            familyToTransfer = family;
+            break;
+        }
+    }
+
+    if (!familyToTransfer) {
+        throw new Error("Family to transfer not found in the source bial for the selected year.");
+    }
+    
+    // Check for name conflict in the destination bial for the entire year
+    for (const month of MONTHS) {
+        const destinationFamilies = db[year][month]?.[destinationUpaBial] ?? [];
+        if (destinationFamilies.some(f => f.name.trim().toLowerCase() === familyToTransfer!.name.trim().toLowerCase())) {
+            throw new Error(`A family named "${familyToTransfer!.name}" already exists in ${destinationUpaBial}.`);
+        }
+    }
+
+    // Perform the transfer for all months
+    MONTHS.forEach(month => {
+        const sourceFamilies = db[year][month]?.[sourceUpaBial];
+        if (sourceFamilies) {
+            const familyIndex = sourceFamilies.findIndex(f => f.id === familyId);
+            if (familyIndex !== -1) {
+                const [movedFamily] = sourceFamilies.splice(familyIndex, 1);
+
+                // Ensure the destination bial array exists
+                if (!db[year][month][destinationUpaBial]) {
+                    db[year][month][destinationUpaBial] = [];
+                }
+                db[year][month][destinationUpaBial].push(movedFamily);
+            }
+        }
+    });
+
+    saveDatabase(db);
+};
+
 
 // --- REPORTING API ---
 export const fetchMonthlyReport = async (year: number, month: string): Promise<AggregateReportData> => {

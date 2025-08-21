@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { Family, TitheCategory } from '../types.ts';
 
@@ -9,6 +10,7 @@ interface TitheRowProps {
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: Family) => void;
+  onOpenTransferModal: (family: Family) => void;
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string, name: string}) => void;
   formatCurrency: (value: number) => string;
@@ -51,6 +53,17 @@ const ReportIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const TransferIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 16H6v-2h2v2zm4-2h-2v2h2v-2zm4-2h-2v2h2v-2zm-6-2H8v2h2v-2zm-4 0H4v2h2v-2zm12-4h-2v2h2V8zm-4 0h-2v2h2V8zm-4-4H8v2h2V4zM4 20h16v-2H4v2zM6 4v2H4V4h2zm12 10h2v-2h-2v2zm-8-8H8v2h2V4zm4 0h2V4h-2v2zm4 0h2V4h-2v2z"/>
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+        <path d="m14.09 12.41-2.5-2.5.71-.71 1.79 1.8 1.79-1.8.71.71-2.5 2.5zM12 16.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-8c-1.93 0-3.5 1.57-3.5 3.5s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5z" opacity="0"/>
+        <path d="M12.79 13.21 11.29 11.71 9.79 13.21 9.08 12.5 11.29 10.29 13.5 12.5Z"/>
+        <path d="M12 7.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5S14.49 7.5 12 7.5zm0 8c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+    </svg>
+);
+
+
 export const TitheRow: React.FC<TitheRowProps> = ({ 
     family,
     onTitheChange, 
@@ -58,6 +71,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     onUpdateFamilyName,
     onUpdateIpSerialNo,
     onOpenTitheModal,
+    onOpenTransferModal,
     onClearTithe,
     onViewFamilyReport,
     formatCurrency 
@@ -133,21 +147,6 @@ export const TitheRow: React.FC<TitheRowProps> = ({
 
     return (
         <tr className="group hover:bg-sky-100 transition-colors duration-150">
-            {/* Family Name */}
-            <td className="px-2 py-3 sm:px-4 text-sm font-medium text-slate-800 whitespace-nowrap">
-                {isEditing ? (
-                    <input 
-                        ref={nameInputRef}
-                        type="text"
-                        value={editedName}
-                        onChange={(e) => setEditedName(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="w-full bg-sky-100 border border-amber-400 rounded-md px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
-                    />
-                ) : (
-                    family.name
-                )}
-            </td>
             {/* IP Serial No. */}
             <td className="px-2 py-3 sm:px-4 text-sm text-slate-600 whitespace-nowrap">
                 {isEditing ? (
@@ -161,6 +160,21 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                     />
                 ) : (
                     family.ipSerialNo ?? <span className="text-slate-400 italic">N/A</span>
+                )}
+            </td>
+            {/* Family Name */}
+            <td className="px-2 py-3 sm:px-4 text-sm font-medium text-slate-800 whitespace-nowrap">
+                {isEditing ? (
+                    <input 
+                        ref={nameInputRef}
+                        type="text"
+                        value={editedName}
+                        onChange={(e) => setEditedName(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="w-full bg-sky-100 border border-amber-400 rounded-md px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                ) : (
+                    family.name
                 )}
             </td>
             {/* Tithe Amounts */}
@@ -191,6 +205,9 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                         </>
                     ) : (
                         <>
+                             <button onClick={() => onOpenTransferModal(family)} className="p-2 text-cyan-600 hover:bg-cyan-100 rounded-full transition-colors" title="Transfer Family" aria-label={`Transfer family ${family.name}`}>
+                                <TransferIcon className="w-5 h-5" />
+                            </button>
                              <button onClick={() => onViewFamilyReport({ id: family.id, name: family.name })} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors" title="View Yearly Report" aria-label={`View yearly report for ${family.name}`}>
                                 <ReportIcon className="w-5 h-5" />
                             </button>

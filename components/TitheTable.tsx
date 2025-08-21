@@ -1,4 +1,5 @@
 
+
 import React, { useMemo } from 'react';
 import type { Family, TitheCategory } from '../types.ts';
 import { TitheRow } from './TitheRow.tsx';
@@ -12,6 +13,7 @@ interface TitheTableProps {
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: Family) => void;
+  onOpenTransferModal: (family: Family) => void;
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string; name: string}) => void;
 }
@@ -28,6 +30,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
     onUpdateFamilyName,
     onUpdateIpSerialNo,
     onOpenTitheModal,
+    onOpenTransferModal,
     onClearTithe,
     onViewFamilyReport
 }) => {
@@ -51,10 +54,10 @@ export const TitheTable: React.FC<TitheTableProps> = ({
         <thead className="bg-sky-100">
           <tr>
             <th scope="col" className="px-2 py-3 sm:px-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Chhungkua
-            </th>
-             <th scope="col" className="px-2 py-3 sm:px-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
               S/N
+            </th>
+            <th scope="col" className="px-2 py-3 sm:px-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Chhungkua
             </th>
             <th scope="col" className="px-2 py-3 sm:px-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
               Pathian Ram
@@ -96,6 +99,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
                 onUpdateFamilyName={onUpdateFamilyName}
                 onUpdateIpSerialNo={onUpdateIpSerialNo}
                 onOpenTitheModal={onOpenTitheModal}
+                onOpenTransferModal={onOpenTransferModal}
                 onClearTithe={onClearTithe}
                 onViewFamilyReport={onViewFamilyReport}
                 formatCurrency={formatCurrency}

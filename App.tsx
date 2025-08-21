@@ -1,6 +1,9 @@
 
 
 
+
+
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -10,6 +13,7 @@ import { Header } from './components/Header.tsx';
 import { TitheTable } from './components/TitheTable.tsx';
 import { ImportFamilies } from './components/ImportFamilies.tsx';
 import { TitheModal } from './components/TitheModal.tsx';
+import { TransferFamilyModal } from './components/TransferFamilyModal.tsx';
 import { AggregateReport } from './components/AggregateReport.tsx';
 import { YearSelection } from './components/YearSelection.tsx';
 import { MonthSelection } from './components/MonthSelection.tsx';
@@ -58,6 +62,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   const [yearlyReportData, setYearlyReportData] = useState<AggregateReportData | null>(null);
   
   const [familyForModal, setFamilyForModal] = useState<Family | null>(null);
+  const [familyToTransfer, setFamilyToTransfer] = useState<Family | null>(null);
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
   const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport'>('entry');
   
@@ -298,6 +303,33 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         return newFamilies;
     });
   }, [selectedYear, selectedMonth, selectedUpaBial]);
+
+  const handleOpenTransferModal = (family: Family) => setFamilyToTransfer(family);
+  const handleCloseTransferModal = () => {
+    setFamilyToTransfer(null);
+    setError(null); // Clear any errors when closing the modal
+  }
+
+  const handleTransferFamily = useCallback(async (familyId: string, destinationBial: string) => {
+    if (!selectedYear || !selectedUpaBial) return;
+
+    setError(null);
+    setIsLoading(true);
+
+    try {
+        await api.transferFamily(selectedYear, familyId, selectedUpaBial, destinationBial);
+        
+        // Remove family from current view
+        setFamilies(prev => prev.filter(f => f.id !== familyId));
+        handleCloseTransferModal();
+        alert(`Family has been successfully transferred to ${destinationBial} for the entire year.`);
+
+    } catch (e: any) {
+        setError(e.message || 'Failed to transfer family.');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [selectedYear, selectedUpaBial]);
   
   const handleBackFromTitheTable = useCallback(() => {
     setSelectedMonth(null);
@@ -318,8 +350,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         if (!selectedYear || !selectedMonth || !selectedUpaBial || families.length === 0) return;
 
         const dataToExport = families.map(family => ({
-            'Chhungkua': family.name,
             'S/N': family.ipSerialNo ?? 'N/A',
+            'Chhungkua': family.name,
             'Pathian Ram': family.tithe.pathianRam,
             'Ramthar': family.tithe.ramthar,
             'Tualchhung': family.tithe.tualchhung,
@@ -335,8 +367,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         }, { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 });
 
         const footer = {
-            'Chhungkua': 'Grand Total',
             'S/N': '',
+            'Chhungkua': 'Grand Total',
             'Pathian Ram': totals.pathianRam,
             'Ramthar': totals.ramthar,
             'Tualchhung': totals.tualchhung,
@@ -363,10 +395,10 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
             styles: { fontSize: 12, halign: 'center' },
         });
 
-        const head = [['Chhungkua', 'S/N', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
+        const head = [['S/N', 'Chhungkua', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
         const body = families.map(f => [
-            f.name,
             f.ipSerialNo ?? 'N/A',
+            f.name,
             formatCurrency(f.tithe.pathianRam),
             formatCurrency(f.tithe.ramthar),
             formatCurrency(f.tithe.tualchhung),
@@ -382,8 +414,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         }, { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 });
 
         const foot = [[
-            'Grand Total',
             '',
+            'Grand Total',
             formatCurrency(totals.pathianRam),
             formatCurrency(totals.ramthar),
             formatCurrency(totals.tualchhung),
@@ -399,8 +431,8 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
             footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 },
             styles: { halign: 'right', lineColor: [203, 213, 225], lineWidth: 0.1 },
             columnStyles: { 
-                0: { halign: 'left' }, 
-                1: { halign: 'left', cellWidth: 15 }
+                0: { halign: 'left', cellWidth: 15 },
+                1: { halign: 'left' }
             },
         });
 
@@ -411,7 +443,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
 
 
   const renderContent = () => {
-    if (error) {
+    if (error && !familyToTransfer) { // Only show main error if transfer modal isn't open
         return <div className="text-center p-8 bg-red-100 text-red-700 rounded-lg">{error}</div>
     }
     
@@ -610,6 +642,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                     onUpdateFamilyName={handleUpdateFamilyName}
                     onUpdateIpSerialNo={handleUpdateIpSerialNo}
                     onOpenTitheModal={handleOpenTitheModal}
+                    onOpenTransferModal={handleOpenTransferModal}
                     onClearTithe={handleClearTithe}
                     onViewFamilyReport={handleViewFamilyReport}
                 />
@@ -650,6 +683,15 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
             family={familyForModal}
             onClose={handleCloseTitheModal}
             onSave={handleSaveTitheModal}
+        />
+      )}
+      {familyToTransfer && selectedUpaBial && (
+        <TransferFamilyModal
+            family={familyToTransfer}
+            upaBials={UPA_BIALS}
+            currentBial={selectedUpaBial}
+            onClose={handleCloseTransferModal}
+            onTransfer={handleTransferFamily}
         />
       )}
     </>
