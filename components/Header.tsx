@@ -1,6 +1,7 @@
 
 
 
+
 import React from 'react';
 
 const ChurchIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -34,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogoClick }) => {
         onClick={onLogoClick}
       />
       <p className="mt-6 text-lg text-slate-600 max-w-2xl mx-auto">
-        Track and manage tithe contributions from families for each month and Upa Bial.
+        Thla tin leh Upa Bial zela chhungkaw sawm a pakhat pek khawmte vawn felna leh enkawlna.
       </p>
     </header>
   );
