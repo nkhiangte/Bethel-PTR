@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bethel-ptr-cache-v5';
+const CACHE_NAME = 'bethel-ptr-cache-v6';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -41,64 +41,45 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Serve assets from cache or network
+// Serve assets using a Network First, falling back to Cache strategy.
 self.addEventListener('fetch', event => {
   // We only want to handle GET requests.
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Strategy: Network falling back to cache for HTML navigation requests.
-  // This ensures the user always gets the latest version of the app shell
-  // when online, but can still access the app when offline.
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // If the fetch is successful, clone the response and cache it.
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request.url, responseToCache);
-          });
-          return response;
-        })
-        .catch(() => {
-          // If the network request fails (e.g., offline),
-          // serve the main index.html from the cache.
-          return caches.match('/');
-        })
-    );
-    return;
-  }
-
-  // Strategy: Cache first, falling back to network for all other assets
-  // (JS, CSS, images, etc.). This is fast and efficient.
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // If we have a response in the cache, return it.
-        if (response) {
-          return response;
-        }
-
-        // If not in cache, fetch from the network.
-        return fetch(event.request).then(
-          networkResponse => {
-            // Check if we received a valid response
-            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
-              return networkResponse;
-            }
-
-            // Clone the response and cache it for future requests.
+    fetch(event.request)
+      .then(networkResponse => {
+        // If the network request is successful, update the cache.
+        if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME)
               .then(cache => {
                 cache.put(event.request, responseToCache);
               });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // If the network request fails (e.g., user is offline),
+        // try to find a matching request in the cache.
+        return caches.match(event.request)
+          .then(cachedResponse => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
 
-            return networkResponse;
-          }
-        );
+            // For navigation requests that fail and are not in cache,
+            // return the base index.html page as a fallback,
+            // allowing the single-page app to handle routing.
+            if (event.request.mode === 'navigate') {
+              return caches.match('/');
+            }
+            
+            // If it's not a navigation request and not in cache, the request fails.
+            return;
+          });
       })
   );
 });
