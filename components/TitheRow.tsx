@@ -187,7 +187,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
             <td className="px-2 py-3 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(family.tithe.tualchhung)}
             </td>
-            {/* Family Total */}
+            {/* Total */}
             <td className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-900 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(familyTotal)}
             </td>

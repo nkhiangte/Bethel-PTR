@@ -69,7 +69,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
               TCH
             </th>
             <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
-              Family Total
+              Total
             </th>
             <th scope="col" className="px-2 py-3 sm:px-3 text-center text-sm font-bold text-slate-600 uppercase tracking-wider no-print">
               Actions
