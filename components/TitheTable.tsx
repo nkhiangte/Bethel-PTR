@@ -53,25 +53,25 @@ export const TitheTable: React.FC<TitheTableProps> = ({
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-sky-100">
           <tr>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-3 sm:px-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider">
               S/N
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-3 sm:px-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider">
               Chhungkua
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               Pathian Ram
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               Ramthar
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               Tualchhung
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               Family Total
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-4 text-center text-xs font-bold text-slate-600 uppercase tracking-wider no-print">
+            <th scope="col" className="px-2 py-3 sm:px-3 text-center text-sm font-bold text-slate-600 uppercase tracking-wider no-print">
               Actions
             </th>
           </tr>
@@ -109,12 +109,12 @@ export const TitheTable: React.FC<TitheTableProps> = ({
         </tbody>
         <tfoot className="bg-sky-200">
             <tr>
-                <td className="px-2 py-4 sm:px-4 text-left text-sm font-bold text-black uppercase" colSpan={2}>Grand Total</td>
-                <td className="px-2 py-4 sm:px-4 text-right text-sm font-bold text-black">{formatCurrency(totals.pathianRam)}</td>
-                <td className="px-2 py-4 sm:px-4 text-right text-sm font-bold text-black">{formatCurrency(totals.ramthar)}</td>
-                <td className="px-2 py-4 sm:px-4 text-right text-sm font-bold text-black">{formatCurrency(totals.tualchhung)}</td>
-                <td className="px-2 py-4 sm:px-4 text-right text-sm font-extrabold text-black">{formatCurrency(totals.grandTotal)}</td>
-                <td className="px-2 py-4 sm:px-4 no-print"></td>
+                <td className="px-2 py-4 sm:px-3 text-left text-sm font-bold text-black uppercase" colSpan={2}>Grand Total</td>
+                <td className="px-2 py-4 sm:px-3 text-right text-sm font-bold text-black">{formatCurrency(totals.pathianRam)}</td>
+                <td className="px-2 py-4 sm:px-3 text-right text-sm font-bold text-black">{formatCurrency(totals.ramthar)}</td>
+                <td className="px-2 py-4 sm:px-3 text-right text-sm font-bold text-black">{formatCurrency(totals.tualchhung)}</td>
+                <td className="px-2 py-4 sm:px-3 text-right text-sm font-extrabold text-black">{formatCurrency(totals.grandTotal)}</td>
+                <td className="px-2 py-4 sm:px-3 no-print"></td>
             </tr>
         </tfoot>
       </table>

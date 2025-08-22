@@ -35,8 +35,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                         alt="Mizoram Synod Logo"
                         className="mx-auto mb-6 h-20 w-auto"
                     />
-                    <h2 className="text-3xl font-bold text-slate-900">Login to your Account</h2>
-                    <p className="mt-2 text-slate-600">Welcome back!</p>
+                    <h1 className="text-3xl font-bold text-slate-900">Champhai Bethel Kohhran Thawhlawm</h1>
+                    <p className="mt-2 text-slate-600">Please login to continue</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     {error && <p className="text-center text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}

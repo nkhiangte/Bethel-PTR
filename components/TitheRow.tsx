@@ -148,7 +148,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     return (
         <tr className="group hover:bg-sky-100 transition-colors duration-150">
             {/* IP Serial No. */}
-            <td className="px-2 py-3 sm:px-4 text-sm text-slate-600 whitespace-nowrap">
+            <td className="px-2 py-3 sm:px-3 text-sm text-slate-600 whitespace-nowrap">
                 {isEditing ? (
                      <input
                         type="text" // Use text to allow empty input
@@ -163,7 +163,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                 )}
             </td>
             {/* Family Name */}
-            <td className="px-2 py-3 sm:px-4 text-sm font-medium text-slate-800 whitespace-nowrap">
+            <td className="px-2 py-3 sm:px-3 text-base font-medium text-slate-800 whitespace-nowrap">
                 {isEditing ? (
                     <input 
                         ref={nameInputRef}
@@ -178,21 +178,21 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                 )}
             </td>
             {/* Tithe Amounts */}
-            <td className="px-2 py-3 sm:px-4 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-3 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(family.tithe.pathianRam)}
             </td>
-            <td className="px-2 py-3 sm:px-4 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-3 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(family.tithe.ramthar)}
             </td>
-            <td className="px-2 py-3 sm:px-4 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-3 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(family.tithe.tualchhung)}
             </td>
             {/* Family Total */}
-            <td className="px-2 py-3 sm:px-4 text-right text-sm font-bold text-slate-900 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-900 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(familyTotal)}
             </td>
             {/* Actions */}
-            <td className="px-2 py-3 sm:px-4 text-center no-print">
+            <td className="px-2 py-3 sm:px-3 text-center no-print">
                 <div className="flex items-center justify-center gap-1 sm:gap-2">
                     {isEditing ? (
                         <>
