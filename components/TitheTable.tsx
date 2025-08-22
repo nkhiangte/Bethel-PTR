@@ -60,13 +60,13 @@ export const TitheTable: React.FC<TitheTableProps> = ({
               Chhungkua
             </th>
             <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
-              Pathian Ram
+              PTR
             </th>
             <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
-              Ramthar
+              RT
             </th>
             <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
-              Tualchhung
+              TCH
             </th>
             <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               Family Total
