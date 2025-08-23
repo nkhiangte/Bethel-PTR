@@ -4,7 +4,7 @@ interface MonthSelectionProps {
   months: string[];
   year: number;
   onSelectMonth: (month: string) => void;
-  onBack: () => void;
+  onBack?: () => void;
   onViewYearlyReport: () => void;
   onViewBialYearlyReport: () => void;
   onGoToDashboard: () => void;
@@ -15,10 +15,12 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
     <div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div className="flex items-center">
-                <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-2 sm:mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    <span className="sr-only">Back to Year Selection</span>
-                </button>
+                {onBack && (
+                    <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-2 sm:mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                        <span className="sr-only">Back to Year Selection</span>
+                    </button>
+                )}
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Kum {year} atan A Thla thlang rawn</h2>
                   <p className="text-slate-500">Or view the report for the entire year.</p>

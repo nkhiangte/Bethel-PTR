@@ -66,18 +66,27 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [error, setError] = useState<string | null>(null);
 
   const clearSelections = useCallback(() => {
-    setSelectedYear(null);
-    setSelectedMonth(null);
-    // For restricted users, keep their bial selected
+    // For Admins, reset everything to the top-level selection (Bial)
     if (isAdmin) {
+        setSelectedYear(null);
+        setSelectedMonth(null);
         setSelectedUpaBial(null);
+        setFamilies([]);
+        setMonthlyReportData(null);
+        setYearlyReportData(null);
+        setFamilyForReport(null);
+        setView('entry');
+        setError(null);
+    } else {
+        // For restricted users, the "dashboard" is the Month Selection for the chosen year.
+        // So we only clear the month and subsequent data, keeping the year selected.
+        setSelectedMonth(null);
+        setFamilies([]);
+        setMonthlyReportData(null);
+        setFamilyForReport(null);
+        setView('entry');
+        setError(null);
     }
-    setFamilies([]);
-    setMonthlyReportData(null);
-    setYearlyReportData(null);
-    setFamilyForReport(null);
-    setView('entry');
-    setError(null);
   }, [isAdmin]);
 
   // Effect to auto-select bial for restricted users on login
@@ -495,7 +504,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         months={MONTHS} 
                         year={selectedYear} 
                         onSelectMonth={setSelectedMonth} 
-                        onBack={() => setSelectedYear(null)}
                         onViewYearlyReport={() => setView('yearlyReport')}
                         onViewBialYearlyReport={() => setView('bialYearlyReport')}
                         onGoToDashboard={clearSelections}
@@ -518,7 +526,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         <h3 className="text-xl font-bold text-slate-800">
                             {selectedUpaBial} &ndash; {selectedMonth} {selectedYear}
                         </h3>
-                        <p className="text-slate-600">Enter tithe contributions for each family below.</p>
+                        <p className="text-slate-600">A hnuai ah hian chhungkaw tin te thawhlawm chhunglut rawh le.</p>
                     </div>
                     <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
                         <button
