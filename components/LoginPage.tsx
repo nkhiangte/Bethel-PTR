@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import * as api from '../api.ts';
+import type { User } from '../types.ts';
 
 interface LoginPageProps {
-    onLoginSuccess: () => void;
+    onLoginSuccess: (user: User) => void;
+    onSwitchToRegister: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onSwitchToRegister }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -17,8 +19,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         setIsLoading(true);
 
         try {
-            await api.login(email.trim(), password.trim());
-            onLoginSuccess(); // This is now just a confirmation; Auth.tsx handles the state change
+            const user = await api.login(email.trim(), password.trim());
+            onLoginSuccess(user);
         } catch (err: any) {
             setError(err.message || 'Login failed. Please check your credentials.');
         } finally {
@@ -83,6 +85,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                         </button>
                     </div>
                 </form>
+                <p className="mt-2 text-center text-sm text-slate-600">
+                    Don't have an account?{' '}
+                    <button type="button" onClick={onSwitchToRegister} className="font-medium text-amber-600 hover:text-amber-500" disabled={isLoading}>
+                        Register here
+                    </button>
+                </p>
             </div>
         </div>
     );

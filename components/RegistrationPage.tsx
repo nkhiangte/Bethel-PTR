@@ -7,7 +7,7 @@ interface RegistrationPageProps {
 
 export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLogin }) => {
     const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -16,10 +16,10 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
         e.preventDefault();
         setError('');
 
-        if (name.trim() && phone.trim() && password.trim()) {
+        if (name.trim() && email.trim() && password.trim()) {
             setIsLoading(true);
             try {
-                await api.register(name, phone, password);
+                await api.register(name, email, password);
                 alert('Registration successful! Please log in.');
                 onSwitchToLogin();
             } catch (err: any) {
@@ -63,17 +63,17 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
                             />
                         </div>
                          <div>
-                            <label htmlFor="phone-number-reg" className="sr-only">Username / Phone</label>
+                            <label htmlFor="email-address-reg" className="sr-only">Email Address</label>
                             <input
-                                id="phone-number-reg"
-                                name="phone"
-                                type="text"
-                                autoComplete="username"
+                                id="email-address-reg"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
                                 required
                                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm bg-sky-100"
-                                placeholder="Username / Phone"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="Email Address"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 disabled={isLoading}
                             />
                         </div>
