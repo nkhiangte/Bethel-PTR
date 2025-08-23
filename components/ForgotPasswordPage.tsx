@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import * as api from '../api.ts';
 
@@ -6,28 +7,28 @@ interface ForgotPasswordPageProps {
 }
 
 export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSwitchToLogin }) => {
-    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (phone.trim()) {
+        setError('');
+        setMessage('');
+        if (email.trim()) {
             setIsLoading(true);
             try {
-                const password = await api.requestPasswordReset(phone.trim());
-                if (password) {
-                    alert(`Password Recovery (Demonstration Only):\n\nYour password is: ${password}\n\nThis is for demonstration and should NEVER be done in a real application. You can now use this password to log in.`);
-                } else {
-                    alert('If an account with that phone number exists, password recovery has been initiated. (For this demo, no account was found with that number).');
-                }
-                onSwitchToLogin();
+                await api.requestPasswordReset(email.trim());
+                setMessage(`If an account with email ${email.trim()} exists, a password reset link has been sent.`);
+                setEmail('');
             } catch (err: any) {
-                alert(err.message || 'An error occurred.');
+                setError(err.message || 'An error occurred. Please try again.');
             } finally {
                 setIsLoading(false);
             }
         } else {
-            alert('Please enter your phone number.');
+            setError('Please enter your email address.');
         }
     };
 
@@ -41,21 +42,23 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSwitch
                         className="mx-auto mb-6 h-20 w-auto"
                     />
                     <h2 className="text-3xl font-bold text-slate-900">Forgot Password</h2>
-                    <p className="mt-2 text-slate-600">Enter your phone number to reset your password.</p>
+                    <p className="mt-2 text-slate-600">Enter your email to reset your password.</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    {error && <p className="text-center text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
+                    {message && <p className="text-center text-sm text-green-600 bg-green-100 p-3 rounded-md">{message}</p>}
                     <div>
-                         <label htmlFor="phone-number-forgot" className="sr-only">Username / Phone</label>
+                         <label htmlFor="email-address-forgot" className="sr-only">Email address</label>
                         <input
-                            id="phone-number-forgot"
-                            name="phone"
-                            type="text"
-                            autoComplete="username"
+                            id="email-address-forgot"
+                            name="email"
+                            type="email"
+                            autoComplete="email"
                             required
                             className="appearance-none rounded-md relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm bg-sky-100"
-                            placeholder="Username / Phone"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="Email Address"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             disabled={isLoading}
                         />
                     </div>
