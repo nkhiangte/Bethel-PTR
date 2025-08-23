@@ -18,8 +18,8 @@ export const Header: React.FC<HeaderProps> = ({ onLogoClick }) => {
         </h1>
       </div>
       <img 
-        src="https://mizoramsynod.org/storage/photo/sBy7mWkYSqSQXfitakOsxKhJ08SoyKifJfOa0db8.jpg" 
-        alt="Mizoram Synod Logo"
+        src="https://i.postimg.cc/RFsN0WkF/pci-logo.png" 
+        alt="PCI Logo"
         className="mx-auto mt-6 h-24 w-auto cursor-pointer"
         onClick={onLogoClick}
       />
