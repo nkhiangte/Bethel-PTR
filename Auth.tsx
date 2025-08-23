@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
 import { getFirebaseAuth } from './firebase';
+import * as api from './api.ts';
 import type { User } from './types';
 import App from './App.tsx';
 import { LoginPage } from './components/LoginPage.tsx';
@@ -15,19 +16,28 @@ export const Auth: React.FC = () => {
     const [view, setView] = useState<'login' | 'register' | 'forgotPassword'>('login');
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (firebaseUser: FirebaseUser | null) => {
+        const auth = getFirebaseAuth();
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
             if (firebaseUser) {
-                const tokenResult = await firebaseUser.getIdTokenResult();
-                const claims = tokenResult.claims;
+                // Fetch user roles from Firestore instead of claims
+                const userDoc = await api.fetchUserDocument(firebaseUser.uid);
                 
-                const appUser: User = {
-                    uid: firebaseUser.uid,
-                    email: firebaseUser.email,
-                    displayName: firebaseUser.displayName,
-                    isAdmin: claims.isAdmin === true,
-                    assignedBial: claims.assignedBial as string | null || null
-                };
-                setUser(appUser);
+                if (userDoc) {
+                    const appUser: User = {
+                        uid: firebaseUser.uid,
+                        email: firebaseUser.email,
+                        displayName: firebaseUser.displayName,
+                        isAdmin: userDoc.isAdmin,
+                        assignedBial: userDoc.assignedBial,
+                    };
+                    setUser(appUser);
+                } else {
+                    // This can happen if user is authenticated but their Firestore doc was deleted.
+                    // Safest to log out.
+                    console.error(`User document not found for UID: ${firebaseUser.uid}. Forcing logout.`);
+                    await firebaseSignOut(auth);
+                    setUser(null);
+                }
             } else {
                 setUser(null);
             }

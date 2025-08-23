@@ -59,6 +59,16 @@ export const updateUserRoles = async (uid: string, roles: { isAdmin: boolean; as
     });
 };
 
+export const fetchUserDocument = async (uid: string): Promise<UserDoc | null> => {
+    const db = getFirebaseDb();
+    const userRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+        return docSnap.data() as UserDoc;
+    }
+    return null;
+};
+
 
 // --- TITHE & FAMILY API ---
 
