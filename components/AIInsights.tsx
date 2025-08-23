@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import type { AggregateReportData } from '../types.ts';
 import { AIInsightsModal } from './AIInsightsModal.tsx';
-import { LoadingSpinner } from './LoadingSpinner.tsx';
 
 interface AIInsightsProps {
     reportData: AggregateReportData;
@@ -17,17 +16,37 @@ const AIEnhancedIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-// This is a placeholder. In a real environment, the key would be securely managed.
-const API_KEY = process.env.API_KEY;
+const GEMINI_API_KEY_STORAGE = 'gemini_api_key';
 
 export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, period }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [insights, setInsights] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem(GEMINI_API_KEY_STORAGE));
+
+    const getApiKey = (): string | null => {
+        if (apiKey) return apiKey;
+        
+        const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE);
+        if (storedKey) {
+            setApiKey(storedKey);
+            return storedKey;
+        }
+
+        const newKey = prompt("Please enter your Google Gemini API Key. You can get one from Google AI Studio.");
+        if (newKey && newKey.trim()) {
+            const trimmedKey = newKey.trim();
+            localStorage.setItem(GEMINI_API_KEY_STORAGE, trimmedKey);
+            setApiKey(trimmedKey);
+            return trimmedKey;
+        }
+        return null;
+    }
 
     const handleGenerateInsights = async () => {
-        if (!API_KEY) {
-            setError("API Key is not configured. Cannot generate insights.");
+        const currentApiKey = getApiKey();
+        if (!currentApiKey) {
+            setError("An API Key is required to generate AI insights. Please try again.");
             return;
         }
 
@@ -36,7 +55,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, pe
         setInsights(null);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: API_KEY });
+            const ai = new GoogleGenAI({ apiKey: currentApiKey });
             
             const systemInstruction = "You are a friendly and encouraging church financial analyst. Your role is to analyze tithe data and provide a positive summary for church leaders and members. Your tone should be optimistic and appreciative. Format your response using simple markdown with bolding for emphasis on key figures, names, or categories, and use newlines for paragraphs. Do not use markdown headings (#).";
 
@@ -67,12 +86,17 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, pe
             });
             
             const text = response.text;
-
             setInsights(text);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error generating insights:", err);
-            setError("Failed to generate insights. Please check the console for details.");
+             if (err.message?.includes('API key not valid')) {
+                 setError("Your Gemini API Key appears to be invalid. It has been cleared. Please try again with a valid key.");
+                 localStorage.removeItem(GEMINI_API_KEY_STORAGE);
+                 setApiKey(null);
+            } else {
+                setError("Failed to generate insights. Please check your network connection and the developer console for details.");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -112,7 +136,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, pe
                     onClick={handleCloseModal}
                 >
                     <div 
-                        className="bg-red-50 p-6 rounded-lg shadow-lg text-center"
+                        className="bg-red-50 p-6 rounded-lg shadow-lg text-center max-w-sm m-4"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="font-bold text-red-800">Error</h3>

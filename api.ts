@@ -1,8 +1,8 @@
-// api.ts - Google Drive version
-import type { Family, Tithe, AggregateReportData, User, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe } from './types.ts';
-import { findOrCreateFile, getFileContent, updateFileContent } from './googleApi.ts';
+// api.ts - Local Storage version
+import type { Family, Tithe, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe } from './types.ts';
 
 // --- CONFIGURATION ---
+const STORAGE_KEY = 'bethel_kohhran_data_local';
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
@@ -10,13 +10,11 @@ const MONTHS = [
 
 // --- IN-MEMORY DATA CACHE ---
 interface AppData {
-    users: User[];
     families: StoredFamily[];
     tithes: StoredTitheLog[];
 }
 
-let appData: AppData = { users: [], families: [], tithes: [] };
-let fileId: string | null = null;
+let appData: AppData = { families: [], tithes: [] };
 let isInitialized = false;
 
 // --- DATA TYPES for storage (internal) ---
@@ -34,27 +32,34 @@ interface StoredTitheLog {
 }
 
 // --- INITIALIZATION and SYNC ---
-export const initializeApi = async (): Promise<void> => {
+export const initializeApi = (): void => {
     if (isInitialized) return;
     
-    fileId = await findOrCreateFile();
-    const content = await getFileContent(fileId);
+    const content = localStorage.getItem(STORAGE_KEY);
     
-    // Check if content is empty or just whitespace
     if (content && content.trim()) {
-        appData = JSON.parse(content);
+        try {
+            appData = JSON.parse(content);
+        } catch (e) {
+            console.error("Failed to parse local data, starting fresh.", e);
+            appData = { families: [], tithes: [] };
+        }
     } else {
-        // If the file is new/empty, initialize with default structure
-        appData = { users: [], families: [], tithes: [] };
-        await _saveDataToDrive();
+        // If storage is new/empty, initialize with default structure
+        appData = { families: [], tithes: [] };
+        _saveDataToLocalStorage();
     }
     
     isInitialized = true;
 };
 
-const _saveDataToDrive = async (): Promise<void> => {
-    if (!fileId) throw new Error("API not initialized. Cannot save data.");
-    await updateFileContent(fileId, JSON.stringify(appData, null, 2));
+const _saveDataToLocalStorage = (): void => {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    } catch (e) {
+        console.error("Failed to save data to local storage", e);
+        alert("Error: Could not save data. Your browser's local storage might be full.");
+    }
 };
 
 
@@ -116,7 +121,7 @@ export const addFamily = async (year: number, upaBial: string, name: string): Pr
         appData.tithes.push(newTitheLog);
     });
     
-    await _saveDataToDrive();
+    _saveDataToLocalStorage();
 };
 
 export const importFamilies = async (year: number, upaBial: string, names: string[]): Promise<{added: number, skipped: number}> => {
@@ -154,7 +159,7 @@ export const importFamilies = async (year: number, upaBial: string, names: strin
     });
 
     if (addedCount > 0) {
-        await _saveDataToDrive();
+        _saveDataToLocalStorage();
     }
     
     return { added: addedCount, skipped: skippedCount };
@@ -200,14 +205,14 @@ export const updateFamily = async (year: number, month: string, upaBial: string,
     }
 
     if (changed) {
-        await _saveDataToDrive();
+        _saveDataToLocalStorage();
     }
 };
 
 export const removeFamily = async (familyId: string): Promise<void> => {
     appData.families = appData.families.filter(f => f.id !== familyId);
     appData.tithes = appData.tithes.filter(log => log.familyId !== familyId);
-    await _saveDataToDrive();
+    _saveDataToLocalStorage();
 };
 
 export const transferFamily = async (familyId: string, destinationUpaBial: string): Promise<void> => {
@@ -222,7 +227,7 @@ export const transferFamily = async (familyId: string, destinationUpaBial: strin
         }
     });
 
-    await _saveDataToDrive();
+    _saveDataToLocalStorage();
 };
 
 
@@ -308,26 +313,3 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
 
     return Array.from(familyTotals.values()).sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };
-
-// --- AUTH/USER API ---
-export const getOrCreateUser = async (googleUser: {id: string; name: string; email: string;}): Promise<User> => {
-    let user = appData.users.find(u => u.uid === googleUser.id);
-    if (user) {
-        return user;
-    }
-
-    // Create a new user if they don't exist
-    const newUser: User = {
-        uid: googleUser.id,
-        name: googleUser.name,
-        email: googleUser.email,
-        assignedBial: 'Upa Bial 1', // Default assignment for new users
-    };
-    appData.users.push(newUser);
-    await _saveDataToDrive();
-    return newUser;
-};
-
-export const getCurrentUser = async (googleUser: {id: string}): Promise<User | null> => {
-     return appData.users.find(u => u.uid === googleUser.id) || null;
-}
