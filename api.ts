@@ -1,133 +1,124 @@
-// api.ts - Local Storage version
-import type { Family, Tithe, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe } from './types.ts';
+import { db } from './firebase.ts';
+import { 
+    collection,
+    query,
+    where,
+    getDocs,
+    writeBatch,
+    doc,
+    addDoc,
+    deleteDoc,
+    updateDoc,
+    serverTimestamp,
+    getDoc,
+    runTransaction,
+    setDoc,
+    orderBy,
+} from 'firebase/firestore';
+import type { User as FirebaseUser } from 'firebase/auth';
+import type { Family, Tithe, TitheCategory, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe, UserDoc } from './types.ts';
 
-// --- CONFIGURATION ---
-const STORAGE_KEY = 'bethel_kohhran_data_local';
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 
-// --- IN-MEMORY DATA CACHE ---
-interface AppData {
-    families: StoredFamily[];
-    tithes: StoredTitheLog[];
-}
+// --- USER MANAGEMENT API ---
 
-let appData: AppData = { families: [], tithes: [] };
-let isInitialized = false;
+export const createUserDocument = async (user: FirebaseUser): Promise<void> => {
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
 
-// --- DATA TYPES for storage (internal) ---
-interface StoredFamily extends Omit<Family, 'id'> {
-    id: string;
-    createdAt: string;
-}
-interface StoredTitheLog {
-    id: string;
-    year: number;
-    month: string;
-    familyId: string;
-    upaBial: string;
-    tithe: Tithe;
-}
-
-// --- INITIALIZATION and SYNC ---
-export const initializeApi = (): void => {
-    if (isInitialized) return;
-    
-    const content = localStorage.getItem(STORAGE_KEY);
-    
-    if (content && content.trim()) {
-        try {
-            appData = JSON.parse(content);
-        } catch (e) {
-            console.error("Failed to parse local data, starting fresh.", e);
-            appData = { families: [], tithes: [] };
-        }
-    } else {
-        // If storage is new/empty, initialize with default structure
-        appData = { families: [], tithes: [] };
-        _saveDataToLocalStorage();
-    }
-    
-    isInitialized = true;
-};
-
-const _saveDataToLocalStorage = (): void => {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-    } catch (e) {
-        console.error("Failed to save data to local storage", e);
-        alert("Error: Could not save data. Your browser's local storage might be full.");
+    // Create a document only if it doesn't already exist
+    if (!userDoc.exists()) {
+        await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || user.email?.split('@')[0],
+            isAdmin: false,       // Default role: not an admin
+            assignedBial: null, // Default role: no bial assigned
+            createdAt: serverTimestamp(),
+        });
     }
 };
 
+export const fetchAllUsers = async (): Promise<UserDoc[]> => {
+    const usersQuery = query(collection(db, 'users'), orderBy('email'));
+    const snapshot = await getDocs(usersQuery);
+    return snapshot.docs.map(d => d.data() as UserDoc);
+};
 
-// --- DATA API ---
+export const updateUserRoles = async (uid: string, roles: { isAdmin: boolean; assignedBial: string | null }): Promise<void> => {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, {
+        isAdmin: roles.isAdmin,
+        assignedBial: roles.assignedBial,
+    });
+};
+
+
+// --- TITHE & FAMILY API ---
+
+const getTitheLogRef = (year: number, month: string, familyId: string) => {
+    const logId = `${year}_${month}_${familyId}`;
+    return doc(db, 'titheLogs', logId);
+};
 
 export const fetchFamilies = async (year: number, month: string, upaBial: string): Promise<FamilyWithTithe[]> => {
-    const relevantTitheLogs = appData.tithes.filter(log => 
-        log.year === year && log.month === month && log.upaBial === upaBial
-    );
+    const familiesQuery = query(collection(db, 'families'), where('currentBial', '==', upaBial));
+    const familiesSnapshot = await getDocs(familiesQuery);
 
-    if (relevantTitheLogs.length === 0) return [];
+    const familiesData: Family[] = familiesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Family));
 
-    const familiesMap = new Map<string, StoredFamily>(appData.families.map(f => [f.id, f]));
+    const familiesWithTithe: FamilyWithTithe[] = [];
 
-    const familiesWithTithe = relevantTitheLogs.map(log => {
-        const family = familiesMap.get(log.familyId);
-        if (!family) return null;
+    for (const family of familiesData) {
+        const titheLogRef = getTitheLogRef(year, month, family.id);
+        const titheDoc = await getDoc(titheLogRef);
         
-        return {
+        let tithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
+        if (titheDoc.exists()) {
+            tithe = titheDoc.data().tithe as Tithe;
+        }
+
+        familiesWithTithe.push({
             id: family.id,
             name: family.name,
             ipSerialNo: family.ipSerialNo,
-            tithe: log.tithe,
-        };
-    }).filter((f): f is FamilyWithTithe => f !== null)
-      .sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
-
-    return familiesWithTithe;
+            tithe: tithe,
+        });
+    }
+    
+    return familiesWithTithe.sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };
 
 export const addFamily = async (year: number, upaBial: string, name: string): Promise<void> => {
     const trimmedName = name.trim();
+    const q = query(collection(db, 'families'), where('name', '==', trimmedName), where('currentBial', '==', upaBial));
+    const existing = await getDocs(q);
 
-    const existingFamily = appData.families.find(f => f.name.toLowerCase() === trimmedName.toLowerCase() && f.currentBial === upaBial);
-    if (existingFamily) {
+    if (!existing.empty) {
         throw new Error(`Family "${trimmedName}" already exists in ${upaBial}.`);
     }
 
-    const newFamilyId = crypto.randomUUID();
-    const newFamily: StoredFamily = {
-        id: newFamilyId,
+    await addDoc(collection(db, 'families'), {
         name: trimmedName,
-        ipSerialNo: null,
         currentBial: upaBial,
-        createdAt: new Date().toISOString(),
-    };
-    appData.families.push(newFamily);
-
-    const defaultTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
-    MONTHS.forEach(month => {
-        const newTitheLog: StoredTitheLog = {
-            id: crypto.randomUUID(),
-            year,
-            month,
-            upaBial,
-            familyId: newFamilyId,
-            tithe: defaultTithe
-        };
-        appData.tithes.push(newTitheLog);
+        ipSerialNo: null,
+        createdAt: serverTimestamp(),
     });
-    
-    _saveDataToLocalStorage();
 };
 
 export const importFamilies = async (year: number, upaBial: string, names: string[]): Promise<{added: number, skipped: number}> => {
-    const existingNames = new Set(appData.families.filter(f => f.currentBial === upaBial).map(f => f.name.trim().toLowerCase()));
+    const batch = writeBatch(db);
+    const familiesRef = collection(db, 'families');
+    
+    const q = query(familiesRef, where('currentBial', '==', upaBial));
+    const snapshot = await getDocs(q);
+    const existingNames = new Set(snapshot.docs.map(d => d.data().name.trim().toLowerCase()));
     
     const uniqueNamesToImport = [...new Set(names.map(name => name.trim()).filter(Boolean))];
+    
     let addedCount = 0;
     let skippedCount = 0;
 
@@ -135,109 +126,106 @@ export const importFamilies = async (year: number, upaBial: string, names: strin
         if (existingNames.has(name.toLowerCase())) {
             skippedCount++;
         } else {
-            const newFamilyId = crypto.randomUUID();
-            const newFamily: StoredFamily = {
-                id: newFamilyId,
-                name,
-                ipSerialNo: null,
+            const newFamilyRef = doc(familiesRef);
+            batch.set(newFamilyRef, {
+                name: name,
                 currentBial: upaBial,
-                createdAt: new Date().toISOString(),
-            };
-            appData.families.push(newFamily);
-
-            const defaultTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
-            MONTHS.forEach(month => {
-                const newTitheLog: StoredTitheLog = {
-                    id: crypto.randomUUID(),
-                    year, month, upaBial, familyId: newFamilyId, tithe: defaultTithe
-                };
-                appData.tithes.push(newTitheLog);
+                ipSerialNo: null,
+                createdAt: serverTimestamp(),
             });
             addedCount++;
-            existingNames.add(name.toLowerCase());
+            existingNames.add(name.toLowerCase()); // Prevent duplicates within the same import file
         }
     });
 
     if (addedCount > 0) {
-        _saveDataToLocalStorage();
+        await batch.commit();
     }
     
     return { added: addedCount, skipped: skippedCount };
 };
 
-export const updateFamily = async (year: number, month: string, upaBial: string, familyId: string, updatedData: Partial<Family & {tithe: Tithe}>): Promise<void> => {
-    let changed = false;
+export const updateTithe = async (year: number, month: string, upaBial: string, familyId: string, categoryOrTithe: TitheCategory | Tithe, value?: number): Promise<void> => {
+    const logRef = getTitheLogRef(year, month, familyId);
     
-    if ('name' in updatedData || 'ipSerialNo' in updatedData) {
-        const familyIndex = appData.families.findIndex(f => f.id === familyId);
-        if (familyIndex !== -1) {
-            if ('name' in updatedData) {
-                const newName = updatedData.name!.trim();
-                const duplicate = appData.families.find(f => f.id !== familyId && f.name.toLowerCase() === newName.toLowerCase() && f.currentBial === upaBial);
-                if (duplicate) {
-                    throw new Error(`Another family with the name "${newName}" already exists.`);
-                }
-                appData.families[familyIndex].name = newName;
-                changed = true;
-            }
-            if ('ipSerialNo' in updatedData) {
-                appData.families[familyIndex].ipSerialNo = updatedData.ipSerialNo!;
-                changed = true;
-            }
-        }
-    }
-
-    if ('tithe' in updatedData) {
-        const titheIndex = appData.tithes.findIndex(log => 
-            log.year === year && log.month === month && log.familyId === familyId
-        );
-        if (titheIndex !== -1) {
-            appData.tithes[titheIndex].tithe = updatedData.tithe!;
-            changed = true;
+    await runTransaction(db, async (transaction) => {
+        const logDoc = await transaction.get(logRef);
+        
+        if (!logDoc.exists()) {
+             const newTithe: Tithe = typeof categoryOrTithe === 'object' 
+                   ? categoryOrTithe 
+                   : { pathianRam: 0, ramthar: 0, tualchhung: 0, [categoryOrTithe]: value! };
+            transaction.set(logRef, {
+                year,
+                month,
+                familyId,
+                upaBial,
+                tithe: newTithe,
+                lastUpdated: serverTimestamp()
+            });
         } else {
-            const newTitheLog: StoredTitheLog = {
-                id: crypto.randomUUID(),
-                year, month, upaBial, familyId, tithe: updatedData.tithe!
-            };
-            appData.tithes.push(newTitheLog);
-            changed = true;
+            const currentData = logDoc.data();
+            let updatedTithe: Tithe;
+            if (typeof categoryOrTithe === 'object') {
+                updatedTithe = categoryOrTithe;
+            } else {
+                updatedTithe = { ...currentData.tithe, [categoryOrTithe]: value! };
+            }
+             transaction.update(logRef, { 
+                tithe: updatedTithe,
+                lastUpdated: serverTimestamp()
+            });
         }
-    }
+    });
+};
 
-    if (changed) {
-        _saveDataToLocalStorage();
-    }
+export const updateFamilyDetails = async (familyId: string, data: { name?: string; ipSerialNo?: number | null }): Promise<void> => {
+    const familyRef = doc(db, 'families', familyId);
+    await updateDoc(familyRef, data);
 };
 
 export const removeFamily = async (familyId: string): Promise<void> => {
-    appData.families = appData.families.filter(f => f.id !== familyId);
-    appData.tithes = appData.tithes.filter(log => log.familyId !== familyId);
-    _saveDataToLocalStorage();
+    const batch = writeBatch(db);
+    
+    // Delete the family document
+    const familyRef = doc(db, 'families', familyId);
+    batch.delete(familyRef);
+    
+    // Find and delete all associated tithe logs
+    const logsQuery = query(collection(db, 'titheLogs'), where('familyId', '==', familyId));
+    const logsSnapshot = await getDocs(logsQuery);
+    logsSnapshot.forEach(logDoc => {
+        batch.delete(logDoc.ref);
+    });
+
+    await batch.commit();
 };
 
 export const transferFamily = async (familyId: string, destinationUpaBial: string): Promise<void> => {
-    const familyIndex = appData.families.findIndex(f => f.id === familyId);
-    if (familyIndex !== -1) {
-        appData.families[familyIndex].currentBial = destinationUpaBial;
-    }
+    const batch = writeBatch(db);
 
-    appData.tithes.forEach(log => {
-        if (log.familyId === familyId) {
-            log.upaBial = destinationUpaBial;
-        }
+    // Update the family's currentBial
+    const familyRef = doc(db, 'families', familyId);
+    batch.update(familyRef, { currentBial: destinationUpaBial });
+    
+    // Find and update all associated tithe logs
+    const logsQuery = query(collection(db, 'titheLogs'), where('familyId', '==', familyId));
+    const logsSnapshot = await getDocs(logsQuery);
+    logsSnapshot.forEach(logDoc => {
+        batch.update(logDoc.ref, { upaBial: destinationUpaBial });
     });
 
-    _saveDataToLocalStorage();
+    await batch.commit();
 };
-
 
 // --- REPORTING API ---
 export const fetchMonthlyReport = async (year: number, month: string): Promise<AggregateReportData> => {
     const report: AggregateReportData = {};
-    const filteredLogs = appData.tithes.filter(log => log.year === year && log.month === month);
+    const logsQuery = query(collection(db, 'titheLogs'), where('year', '==', year), where('month', '==', month));
+    const logsSnapshot = await getDocs(logsQuery);
 
-    filteredLogs.forEach(log => {
-        const { upaBial, tithe } = log;
+    logsSnapshot.forEach(doc => {
+        const { upaBial, tithe } = doc.data();
         if (!report[upaBial]) {
             report[upaBial] = { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 };
         }
@@ -246,15 +234,17 @@ export const fetchMonthlyReport = async (year: number, month: string): Promise<A
         report[upaBial].tualchhung += tithe.tualchhung;
         report[upaBial].total += tithe.pathianRam + tithe.ramthar + tithe.tualchhung;
     });
+
     return report;
 };
 
 export const fetchYearlyReport = async (year: number): Promise<AggregateReportData> => {
     const report: AggregateReportData = {};
-    const filteredLogs = appData.tithes.filter(log => log.year === year);
+    const logsQuery = query(collection(db, 'titheLogs'), where('year', '==', year));
+    const logsSnapshot = await getDocs(logsQuery);
     
-    filteredLogs.forEach(log => {
-        const { upaBial, tithe } = log;
+    logsSnapshot.forEach(doc => {
+        const { upaBial, tithe } = doc.data();
         if (!report[upaBial]) {
             report[upaBial] = { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 };
         }
@@ -263,53 +253,63 @@ export const fetchYearlyReport = async (year: number): Promise<AggregateReportDa
         report[upaBial].tualchhung += tithe.tualchhung;
         report[upaBial].total += tithe.pathianRam + tithe.ramthar + tithe.tualchhung;
     });
+
     return report;
 };
 
 export const fetchFamilyYearlyData = async (year: number, familyId: string): Promise<{ data: FamilyYearlyTitheData, familyInfo: { name: string, ipSerialNo: number | null, upaBial: string } }> => {
-    const family = appData.families.find(f => f.id === familyId);
-    if (!family) {
+    const familyRef = doc(db, 'families', familyId);
+    const familyDoc = await getDoc(familyRef);
+    if (!familyDoc.exists()) {
         throw new Error("Family not found.");
     }
-
-    const familyInfo = { name: family.name, ipSerialNo: family.ipSerialNo, upaBial: family.currentBial };
+    const familyData = familyDoc.data() as Omit<Family, 'id'>;
+    const familyInfo = { name: familyData.name, ipSerialNo: familyData.ipSerialNo, upaBial: familyData.currentBial };
 
     const yearlyData: FamilyYearlyTitheData = {};
     MONTHS.forEach(month => {
         yearlyData[month] = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
     });
-    
-    const familyLogs = appData.tithes.filter(log => log.year === year && log.familyId === familyId);
 
-    familyLogs.forEach(log => {
+    const logsQuery = query(collection(db, 'titheLogs'), where('year', '==', year), where('familyId', '==', familyId));
+    const logsSnapshot = await getDocs(logsQuery);
+    logsSnapshot.forEach(doc => {
+        const log = doc.data();
         yearlyData[log.month] = log.tithe;
     });
 
     return { data: yearlyData, familyInfo };
 };
 
+
 export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): Promise<YearlyFamilyTotal[]> => {
-    const bialFamilies = appData.families.filter(f => f.currentBial === upaBial);
-    if (bialFamilies.length === 0) return [];
-    
-    const familyTotals = new Map<string, YearlyFamilyTotal>();
-    bialFamilies.forEach(f => {
-        familyTotals.set(f.id, {
-            id: f.id, name: f.name, ipSerialNo: f.ipSerialNo,
+    const familiesQuery = query(collection(db, 'families'), where('currentBial', '==', upaBial));
+    const familiesSnapshot = await getDocs(familiesQuery);
+    if (familiesSnapshot.empty) return [];
+
+    const familyTotalsMap = new Map<string, YearlyFamilyTotal>();
+    familiesSnapshot.docs.forEach(d => {
+        const family = { id: d.id, ...d.data() } as Family;
+        familyTotalsMap.set(family.id, {
+            id: family.id,
+            name: family.name,
+            ipSerialNo: family.ipSerialNo,
             tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 },
         });
     });
 
-    const yearLogs = appData.tithes.filter(log => log.year === year);
+    const logsQuery = query(collection(db, 'titheLogs'), where('year', '==', year), where('upaBial', '==', upaBial));
+    const logsSnapshot = await getDocs(logsQuery);
 
-    yearLogs.forEach(log => {
-        const family = familyTotals.get(log.familyId);
-        if (family) {
-            family.tithe.pathianRam += log.tithe.pathianRam;
-            family.tithe.ramthar += log.tithe.ramthar;
-            family.tithe.tualchhung += log.tithe.tualchhung;
+    logsSnapshot.forEach(doc => {
+        const log = doc.data();
+        const familyTotal = familyTotalsMap.get(log.familyId);
+        if (familyTotal) {
+            familyTotal.tithe.pathianRam += log.tithe.pathianRam;
+            familyTotal.tithe.ramthar += log.tithe.ramthar;
+            familyTotal.tithe.tualchhung += log.tithe.tualchhung;
         }
     });
 
-    return Array.from(familyTotals.values()).sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
+    return Array.from(familyTotalsMap.values()).sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };

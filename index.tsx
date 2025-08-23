@@ -1,7 +1,6 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import Auth from './Auth.tsx';
+import { Auth } from './Auth.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -16,37 +16,14 @@ const AIEnhancedIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-const GEMINI_API_KEY_STORAGE = 'gemini_api_key';
-
 export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, period }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [insights, setInsights] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem(GEMINI_API_KEY_STORAGE));
-
-    const getApiKey = (): string | null => {
-        if (apiKey) return apiKey;
-        
-        const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE);
-        if (storedKey) {
-            setApiKey(storedKey);
-            return storedKey;
-        }
-
-        const newKey = prompt("Please enter your Google Gemini API Key. You can get one from Google AI Studio.");
-        if (newKey && newKey.trim()) {
-            const trimmedKey = newKey.trim();
-            localStorage.setItem(GEMINI_API_KEY_STORAGE, trimmedKey);
-            setApiKey(trimmedKey);
-            return trimmedKey;
-        }
-        return null;
-    }
 
     const handleGenerateInsights = async () => {
-        const currentApiKey = getApiKey();
-        if (!currentApiKey) {
-            setError("An API Key is required to generate AI insights. Please try again.");
+        if (!process.env.API_KEY) {
+            setError("Gemini API Key is not configured. Please contact the administrator.");
             return;
         }
 
@@ -55,7 +32,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, pe
         setInsights(null);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: currentApiKey });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             const systemInstruction = "You are a friendly and encouraging church financial analyst. Your role is to analyze tithe data and provide a positive summary for church leaders and members. Your tone should be optimistic and appreciative. Format your response using simple markdown with bolding for emphasis on key figures, names, or categories, and use newlines for paragraphs. Do not use markdown headings (#).";
 
@@ -91,9 +68,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, pe
         } catch (err: any) {
             console.error("Error generating insights:", err);
              if (err.message?.includes('API key not valid')) {
-                 setError("Your Gemini API Key appears to be invalid. It has been cleared. Please try again with a valid key.");
-                 localStorage.removeItem(GEMINI_API_KEY_STORAGE);
-                 setApiKey(null);
+                 setError("The configured Gemini API Key is invalid. Please contact the administrator.");
             } else {
                 setError("Failed to generate insights. Please check your network connection and the developer console for details.");
             }

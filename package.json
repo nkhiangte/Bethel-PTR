@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.15.0",
+    "@google/genai": "^1.14.0",
     "firebase": "^10.12.4",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",

@@ -40,13 +40,24 @@ export interface AggregateReportData {
   [upaBial: string]: BialTotal;
 }
 
-// For Authentication
+// For Authentication to match Firebase user and custom claims
 export interface User {
   uid: string;
-  name: string;
-  email: string;
+  email: string | null;
+  displayName: string | null;
   assignedBial: string | null; // e.g., "Upa Bial 1", null for admin
+  isAdmin: boolean;
 }
+
+// Represents the user document in the 'users' collection in Firestore
+export interface UserDoc {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    isAdmin: boolean;
+    assignedBial: string | null;
+}
+
 
 // For Family Yearly Report
 export interface FamilyYearlyTitheData {

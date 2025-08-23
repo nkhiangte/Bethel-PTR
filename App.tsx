@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -17,8 +16,9 @@ import { YearlyReport } from './components/YearlyReport.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
+import { UserManagement } from './components/UserManagement.tsx';
 import * as api from './api.ts';
-import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe } from './types.ts';
+import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe, User } from './types.ts';
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -31,8 +31,8 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
 interface AppProps {
-  onLogout: () => void;
-  assignedBial: string | null;
+    user: User;
+    onLogout: () => void;
 }
 
 const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -47,7 +47,8 @@ const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
+const App: React.FC<AppProps> = ({ user, onLogout }) => {
+  const { assignedBial, isAdmin } = user;
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(null);
@@ -59,7 +60,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
   const [familyToTransfer, setFamilyToTransfer] = useState<FamilyWithTithe | null>(null);
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport'>('entry');
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement'>('entry');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +69,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setSelectedYear(null);
     setSelectedMonth(null);
     // For restricted users, keep their bial selected
-    if (!assignedBial) {
+    if (isAdmin) {
         setSelectedUpaBial(null);
     }
     setFamilies([]);
@@ -77,7 +78,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setFamilyForReport(null);
     setView('entry');
     setError(null);
-  }, [assignedBial]);
+  }, [isAdmin]);
 
   // Effect to auto-select bial for restricted users on login
   useEffect(() => {
@@ -97,6 +98,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
           const fetchedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
           setFamilies(fetchedFamilies);
         } catch (e) {
+          console.error(e);
           setError('Could not fetch family data.');
         } finally {
           setIsLoading(false);
@@ -118,6 +120,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                 const data = await api.fetchMonthlyReport(selectedYear, selectedMonth);
                 setMonthlyReportData(data);
             } catch(e) {
+                console.error(e);
                 setError('Could not fetch monthly report data.');
             } finally {
                 setIsLoading(false);
@@ -137,6 +140,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                 const data = await api.fetchYearlyReport(selectedYear);
                 setYearlyReportData(data);
             } catch(e) {
+                console.error(e);
                 setError('Could not fetch yearly report data.');
             } finally {
                 setIsLoading(false);
@@ -178,127 +182,72 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
         setFamilies(updatedFamilies);
     } catch (e) {
+        console.error(e);
         setError('Failed to import families.');
     } finally {
         setIsLoading(false);
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  const handleTitheChange = useCallback((familyId: string, category: TitheCategory, value: number) => {
+  const handleTitheChange = useCallback(async (familyId: string, category: TitheCategory, value: number) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
     
-    setFamilies(prevFamilies => {
-        const familyIndex = prevFamilies.findIndex(f => f.id === familyId);
-        if (familyIndex === -1) return prevFamilies;
-
-        const updatedFamily = {
-            ...prevFamilies[familyIndex],
-            tithe: { ...prevFamilies[familyIndex].tithe, [category]: value }
-        };
-
-        const newFamilies = [...prevFamilies];
-        newFamilies[familyIndex] = updatedFamily;
-
-        setError(null);
-        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: updatedFamily.tithe })
-            .catch(() => {
-                setError("Failed to save changes. Reverting.");
-                setFamilies(prevFamilies);
-            });
-            
-        return newFamilies;
+    // Optimistic UI update
+    const updatedFamilies = families.map(f => {
+        if (f.id === familyId) {
+            return { ...f, tithe: { ...f.tithe, [category]: value } };
+        }
+        return f;
     });
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+    setFamilies(updatedFamilies);
+    
+    // Persist change
+    await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, category, value);
+  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
   
-  const handleRemoveFamily = useCallback((familyId: string) => {
+  const handleRemoveFamily = useCallback(async (familyId: string) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
-    setFamilies(prevFamilies => {
-        const newFamilies = prevFamilies.filter(f => f.id !== familyId);
+    // Optimistic UI update
+    setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
 
-        setError(null);
-        api.removeFamily(familyId)
-            .catch(() => {
-                setError("Failed to remove family. Reverting.");
-                setFamilies(prevFamilies);
-            });
-        
-        return newFamilies;
-    });
+    // Persist change
+    await api.removeFamily(familyId);
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  const handleUpdateFamilyName = useCallback((familyId: string, newName: string) => {
+  const handleUpdateFamilyName = useCallback(async (familyId: string, newName: string) => {
     if (newName.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
     const trimmedName = newName.trim();
 
-    setError(null);
-    const originalFamilies = families; // Keep a copy for revert
-    
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f));
+    await api.updateFamilyDetails(familyId, { name: trimmedName });
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-    api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { name: trimmedName })
-        .catch((e: any) => {
-            setError(e.message || "Failed to update name. Reverting.");
-            setFamilies(originalFamilies);
-        });
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
-
-  const handleUpdateIpSerialNo = useCallback((familyId: string, newSerial: number | null) => {
+  const handleUpdateIpSerialNo = useCallback(async (familyId: string, newSerial: number | null) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
-    setError(null);
-    const originalFamilies = families; // Keep a copy for revert
-
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f));
-    
-    api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { ipSerialNo: newSerial })
-        .catch(() => {
-            setError("Failed to update serial number. Reverting.");
-            setFamilies(originalFamilies);
-        });
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+    await api.updateFamilyDetails(familyId, { ipSerialNo: newSerial });
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
 
   const handleOpenTitheModal = (family: FamilyWithTithe) => setFamilyForModal(family);
   const handleCloseTitheModal = () => setFamilyForModal(null);
 
-  const handleSaveTitheModal = useCallback((familyId: string, newTithe: Tithe) => {
+  const handleSaveTitheModal = useCallback(async (familyId: string, newTithe: Tithe) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
-    setFamilies(prevFamilies => {
-        const newFamilies = prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f);
-        
-        setError(null);
-        api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe })
-            .catch(() => {
-                setError("Failed to save tithe details. Reverting.");
-                setFamilies(prevFamilies);
-            });
-
-        return newFamilies;
-    });
-
+    setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f));
+    await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
     handleCloseTitheModal();
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  const handleClearTithe = useCallback((familyId: string) => {
+  const handleClearTithe = useCallback(async (familyId: string) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
 
     const newTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
-
-    // Keep a reference to the original state to revert in case of an error
-    const originalFamilies = families;
-
-    // Optimistically update the UI
     setFamilies(prev => prev.map(f => (f.id === familyId ? { ...f, tithe: newTithe } : f)));
-
-    // Call the API and handle potential failure
-    setError(null);
-    api.updateFamily(selectedYear, selectedMonth, selectedUpaBial, familyId, { tithe: newTithe })
-        .catch(() => {
-            setError("Failed to clear tithe details. Reverting.");
-            setFamilies(originalFamilies);
-        });
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+    await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
+  }, [selectedYear, selectedMonth, selectedUpaBial]);
 
   const handleOpenTransferModal = (family: FamilyWithTithe) => setFamilyToTransfer(family);
   const handleCloseTransferModal = () => {
@@ -314,12 +263,9 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
 
     try {
         await api.transferFamily(familyId, destinationBial);
-        
-        // Remove family from current view
         setFamilies(prev => prev.filter(f => f.id !== familyId));
         handleCloseTransferModal();
-        alert(`Family has been successfully transferred to ${destinationBial} for the entire year.`);
-
+        alert(`Family has been successfully transferred to ${destinationBial}.`);
     } catch (e: any) {
         setError(e.message || 'Failed to transfer family.');
     } finally {
@@ -496,8 +442,17 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         return null;
     }
     
+    if (view === 'userManagement') {
+        return <UserManagement 
+                    currentUser={user}
+                    upaBials={UPA_BIALS}
+                    onBack={() => setView('entry')}
+                    onGoToDashboard={clearSelections}
+                />
+    }
+
     // Admin Flow
-    if (!assignedBial) {
+    if (isAdmin) {
         if (!selectedUpaBial) {
             return <UpaBialSelection 
                         upaBials={UPA_BIALS}
@@ -553,61 +508,48 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     return (
         <div className="printable-area">
             <div className="hidden print:block text-center mb-4">
-                <h1 className="text-xl font-bold">{selectedUpaBial?.replace('Upa ', '')} Pathian Ram</h1>
-                <h2 className="text-lg">{selectedMonth} {selectedYear}</h2>
+                <h1 className="text-xl font-bold">{selectedUpaBial} - {selectedMonth} {selectedYear}</h1>
+                <h2 className="text-lg">Pathian Ram Thawhlawm</h2>
             </div>
-            <div className="flex items-center justify-between mb-6 no-print">
-                 <div className="flex items-center">
-                    <button onClick={handleBackFromTitheTable} className="p-2 rounded-full hover:bg-slate-200 transition-colors mr-2 sm:mr-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                        <span className="sr-only">Back to Previous Step</span>
-                    </button>
-                    <div className="text-sm sm:text-base text-slate-600">
-                        <span
-                            className={!assignedBial ? "cursor-pointer hover:underline" : ""}
-                            onClick={() => {
-                                if (!assignedBial) {
-                                    setSelectedYear(null);
-                                    setSelectedMonth(null);
-                                }
-                            }}
+
+            <div className="mb-8 p-4 bg-sky-200/50 border border-sky-200 rounded-lg no-print">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="flex-grow">
+                        <h3 className="text-xl font-bold text-slate-800">
+                            {selectedUpaBial} &ndash; {selectedMonth} {selectedYear}
+                        </h3>
+                        <p className="text-slate-600">Enter tithe contributions for each family below.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
+                        <button
+                            onClick={handleBackFromTitheTable}
+                            className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 transition-colors text-sm"
+                            aria-label="Back to Month Selection"
                         >
-                            {selectedUpaBial}
-                        </span>
-                        <span className="mx-1 sm:mx-2">/</span>
-                        <span
-                            className="cursor-pointer hover:underline"
-                            onClick={() => { setSelectedMonth(null); setView('entry'); }}
-                        >
-                            {selectedYear}
-                        </span>
-                        <span className="mx-1 sm:mx-2">/</span>
-                        <span className="font-bold text-slate-800">{selectedMonth}</span>
+                            &larr; Back
+                        </button>
+                         <button onClick={handleExportBialPdf} className="flex items-center gap-2 bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition-all text-sm">
+                            <PdfIcon className="w-4 h-4" />
+                            <span>Export PDF</span>
+                        </button>
+                        <button onClick={handleExportBialExcel} className="flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-all text-sm">
+                            <ExportIcon className="w-4 h-4" />
+                            <span>Export Excel</span>
+                        </button>
                     </div>
                 </div>
-                 <button 
-                    onClick={clearSelections} 
-                    className="flex items-center gap-2 bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all text-sm"
-                    aria-label="Back to Dashboard"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                    </svg>
-                    <span className="hidden sm:inline">Dashboard</span>
-                </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 items-start mb-8 flex-wrap no-print">
-                <div className="flex-grow w-full sm:w-auto">
+            <div className="flex flex-col-reverse md:flex-row gap-6 mb-8 no-print">
+                <div className="flex-grow">
                     <AddFamilyForm onAddFamily={handleAddFamily} />
                 </div>
-                <ImportFamilies onImport={handleImportFamilies} />
+                <div>
+                   <ImportFamilies onImport={handleImportFamilies} />
+                </div>
             </div>
 
-            <div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-4 no-print">
-                    Pathian Ram
-                </h2>
+            <div className="bg-sky-50 rounded-lg shadow-md overflow-hidden border border-slate-200">
                 <TitheTable
                     families={families}
                     isLoading={isLoading}
@@ -622,79 +564,53 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
                 />
             </div>
 
-            <div className="mt-8 pt-8 border-t border-slate-200 flex flex-col sm:flex-row gap-4 items-start flex-wrap no-print">
-                 <button
-                    onClick={() => setView('report')}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md"
-                >
-                    View Aggregate Report
-                </button>
-                 <button
-                    onClick={handleExportBialExcel}
-                    disabled={families.length === 0}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
-                >
-                    <ExportIcon className="w-5 h-5" />
-                    Export Excel (This Bial)
-                </button>
-                 <button
-                    onClick={handleExportBialPdf}
-                    disabled={families.length === 0}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
-                >
-                    <PdfIcon className="w-5 h-5" />
-                    Export PDF (This Bial)
-                </button>
-            </div>
+            {familyForModal && (
+                <TitheModal 
+                    family={familyForModal}
+                    onClose={handleCloseTitheModal}
+                    onSave={handleSaveTitheModal}
+                />
+            )}
+            {familyToTransfer && selectedUpaBial && (
+                <TransferFamilyModal
+                    family={familyToTransfer}
+                    upaBials={UPA_BIALS}
+                    currentBial={selectedUpaBial}
+                    onClose={handleCloseTransferModal}
+                    onTransfer={handleTransferFamily}
+                />
+            )}
         </div>
     );
-  };
-
-
+  }
+  
   return (
-    <>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="no-print relative">
-            <Header onLogoClick={clearSelections} />
-            <div className="absolute top-0 right-0">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8">
+      <Header onLogoClick={clearSelections} />
+       <main className="mt-8">
+        {renderContent()}
+      </main>
+      <footer className="mt-12 text-center text-slate-500 text-sm no-print">
+         <div className="flex items-center justify-center gap-4 mb-4">
+             <span>Logged in as: <strong>{user.email}</strong> {user.isAdmin ? '(Admin)' : `(${user.assignedBial})`}</span>
+              {isAdmin && view !== 'userManagement' && (
                  <button
-                  onClick={onLogout}
-                  aria-label="Reset All Data"
-                  title="Reset All Data (Deletes Everything!)"
-                  className="flex items-center justify-center bg-red-500 text-white font-semibold p-3 rounded-full hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-all shadow-md"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <main className="mt-8">
-          <div className="bg-sky-50 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 min-h-[50vh]">
-            {renderContent()}
-          </div>
-        </main>
-        <footer className="text-center mt-12 text-slate-500 text-sm no-print">
-            <p>Tithe Calculator &copy; {new Date().getFullYear()}. All rights reserved.</p>
-        </footer>
-      </div>
-      {familyForModal && (
-        <TitheModal 
-            family={familyForModal}
-            onClose={handleCloseTitheModal}
-            onSave={handleSaveTitheModal}
-        />
-      )}
-      {familyToTransfer && selectedUpaBial && (
-        <TransferFamilyModal
-            family={familyToTransfer}
-            upaBials={UPA_BIALS}
-            currentBial={selectedUpaBial}
-            onClose={handleCloseTransferModal}
-            onTransfer={handleTransferFamily}
-        />
-      )}
-    </>
+                     onClick={() => setView('userManagement')}
+                     className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all"
+                 >
+                    User Management
+                 </button>
+             )}
+             <button
+                 onClick={onLogout}
+                 className="bg-slate-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all"
+             >
+                Logout
+             </button>
+         </div>
+         <p>Champhai Bethel Presbyterian Kohhran App. All rights reserved.</p>
+      </footer>
+    </div>
   );
 };
 
