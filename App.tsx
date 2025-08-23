@@ -166,12 +166,12 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-   const handleImportFamilies = useCallback(async (names: string[], onResult: (message: string) => void) => {
+   const handleImportFamilies = useCallback(async (familiesToImport: { name: string; ipSerialNo: number | null }[], onResult: (message: string) => void) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
     setIsLoading(true);
     setError(null);
     try {
-        const { added, skipped } = await api.importFamilies(selectedYear, selectedUpaBial, names);
+        const { added, skipped } = await api.importFamilies(selectedYear, selectedUpaBial, familiesToImport);
         
         let message = `${added} new families imported successfully!`;
         if (skipped > 0) {

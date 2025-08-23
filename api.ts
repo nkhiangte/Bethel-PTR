@@ -125,7 +125,7 @@ export const addFamily = async (year: number, upaBial: string, name: string): Pr
     });
 };
 
-export const importFamilies = async (year: number, upaBial: string, names: string[]): Promise<{added: number, skipped: number}> => {
+export const importFamilies = async (year: number, upaBial: string, familiesToImport: { name: string; ipSerialNo: number | null }[]): Promise<{added: number, skipped: number}> => {
     const db = getFirebaseDb();
     const batch = writeBatch(db);
     const familiesRef = collection(db, 'families');
@@ -134,26 +134,35 @@ export const importFamilies = async (year: number, upaBial: string, names: strin
     const snapshot = await getDocs(q);
     const existingNames = new Set(snapshot.docs.map(d => d.data().name.trim().toLowerCase()));
     
-    const uniqueNamesToImport = [...new Set(names.map(name => name.trim()).filter(Boolean))];
+    // De-duplicate the list from the file, keeping the first occurrence.
+    const uniqueFamiliesFromFile = new Map<string, { name: string; ipSerialNo: number | null }>();
+    for (const family of familiesToImport) {
+        const trimmedName = family.name.trim();
+        if (trimmedName && !uniqueFamiliesFromFile.has(trimmedName.toLowerCase())) {
+            uniqueFamiliesFromFile.set(trimmedName.toLowerCase(), family);
+        }
+    }
     
     let addedCount = 0;
-    let skippedCount = 0;
+    // Skipped count starts with families that were duplicates within the file itself.
+    let skippedCount = familiesToImport.length - uniqueFamiliesFromFile.size;
 
-    uniqueNamesToImport.forEach(name => {
-        if (existingNames.has(name.toLowerCase())) {
+    for (const family of uniqueFamiliesFromFile.values()) {
+        const trimmedName = family.name.trim();
+        if (existingNames.has(trimmedName.toLowerCase())) {
             skippedCount++;
         } else {
             const newFamilyRef = doc(familiesRef);
             batch.set(newFamilyRef, {
-                name: name,
+                name: trimmedName,
                 currentBial: upaBial,
-                ipSerialNo: null,
+                ipSerialNo: family.ipSerialNo, // Set the serial number
                 createdAt: serverTimestamp(),
             });
             addedCount++;
-            existingNames.add(name.toLowerCase()); // Prevent duplicates within the same import file
+            existingNames.add(trimmedName.toLowerCase()); // Add to set to prevent duplicates from within the same batch.
         }
-    });
+    }
 
     if (addedCount > 0) {
         await batch.commit();

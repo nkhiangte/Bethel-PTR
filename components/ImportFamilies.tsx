@@ -2,8 +2,13 @@
 import React, { useRef } from 'react';
 import { read, utils } from 'xlsx';
 
+interface FamilyImportData {
+  name: string;
+  ipSerialNo: number | null;
+}
+
 interface ImportFamiliesProps {
-  onImport: (names: string[], onResult: (message: string) => void) => void;
+  onImport: (families: FamilyImportData[], onResult: (message: string) => void) => void;
 }
 
 const ExcelIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -31,36 +36,41 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport }) => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        const names: string[] = [];
+        const familiesToImport: FamilyImportData[] = [];
         const range = utils.decode_range(worksheet['!ref'] || 'A1');
 
         // Manually iterate over rows to ensure all are read
         for (let R = range.s.r; R <= range.e.r; ++R) {
-            // We only read the first column (C=0)
-            const cell_address = { c: 0, r: R };
-            const cell_ref = utils.encode_cell(cell_address);
-            const cell = worksheet[cell_ref];
-            
-            // Check if cell has a value
-            if (cell && cell.v) {
-                const name = String(cell.v).trim();
-                if (name) { // Ensure name is not an empty string
-                    names.push(name);
-                }
+            // Read S/N from column A (c: 0)
+            const serialCellRef = utils.encode_cell({ c: 0, r: R });
+            const serialCell = worksheet[serialCellRef];
+            const serialNo = serialCell && serialCell.v != null ? parseInt(String(serialCell.v), 10) : null;
+
+            // Read Name from column B (c: 1)
+            const nameCellRef = utils.encode_cell({ c: 1, r: R });
+            const nameCell = worksheet[nameCellRef];
+            const name = nameCell && nameCell.v != null ? String(nameCell.v).trim() : '';
+
+            // We only import rows that have a family name.
+            if (name) {
+                familiesToImport.push({
+                    name,
+                    ipSerialNo: (serialNo !== null && !isNaN(serialNo)) ? serialNo : null,
+                });
             }
         }
         
-        if (names.length > 0) {
-            onImport(names, (message) => {
+        if (familiesToImport.length > 0) {
+            onImport(familiesToImport, (message) => {
                 alert(message);
             });
         } else {
-            alert('No valid family names found in the first column of the Excel sheet.');
+            alert('No valid family names found in the second column of the Excel sheet. Please ensure S/N is in the first column and Family Name is in the second.');
         }
 
       } catch (error) {
         console.error("Error reading or parsing Excel file:", error);
-        alert('There was an error processing the Excel file. Please ensure it is a valid format and the first column contains names.');
+        alert('There was an error processing the Excel file. Please ensure it is a valid format, S/N is in the first column, and Family Name is in the second.');
       }
       // Reset the input so user can select the same file again
       if(fileInputRef.current) {
