@@ -79,7 +79,7 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
             >
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-slate-800">Enter Tithe For</h2>
+                        <h2 className="text-2xl font-bold text-slate-800">Sawm a Pakhat Chhunluhna</h2>
                         <p className="text-amber-600 font-semibold">{family.name}</p>
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1" aria-label="Close modal">
