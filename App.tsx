@@ -47,6 +47,13 @@ const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const ReportIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+         <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+    </svg>
+);
+
+
 const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const { assignedBial, isAdmin } = user;
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -482,8 +489,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         year={selectedYear} 
                         onSelectMonth={setSelectedMonth} 
                         onBack={() => setSelectedYear(null)}
-                        onViewYearlyReport={() => setView('yearlyReport')}
-                        onViewBialYearlyReport={() => setView('bialYearlyReport')}
                         onGoToDashboard={clearSelections}
                     />;
         }
@@ -504,8 +509,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         months={MONTHS} 
                         year={selectedYear} 
                         onSelectMonth={setSelectedMonth} 
-                        onViewYearlyReport={() => setView('yearlyReport')}
-                        onViewBialYearlyReport={() => setView('bialYearlyReport')}
                         onGoToDashboard={clearSelections}
                     />;
         }
@@ -535,14 +538,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                             aria-label="Back to Month Selection"
                         >
                             &larr; Back
-                        </button>
-                         <button onClick={handleExportBialPdf} className="flex items-center gap-2 bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition-all text-sm">
-                            <PdfIcon className="w-4 h-4" />
-                            <span>Export PDF</span>
-                        </button>
-                        <button onClick={handleExportBialExcel} className="flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-all text-sm">
-                            <ExportIcon className="w-4 h-4" />
-                            <span>Export Excel</span>
                         </button>
                     </div>
                 </div>
@@ -592,12 +587,68 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     );
   }
   
+  const showMonthlyActions = selectedYear && selectedMonth && selectedUpaBial && view === 'entry';
+  const showYearlyActions = selectedYear && selectedUpaBial && !selectedMonth && view === 'entry';
+
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8">
       <Header onLogoClick={clearSelections} />
-       <main className="mt-8">
+       <main className="mt-8 mb-24">
         {renderContent()}
       </main>
+
+      {/* Reports and Exports Section */}
+      {(showMonthlyActions || showYearlyActions) && (
+        <div className="mt-12 p-6 bg-white rounded-lg shadow-md no-print border border-slate-200">
+            <h3 className="text-xl font-bold text-slate-800 mb-4 text-center">Reports & Exports</h3>
+            <div className="flex flex-wrap justify-center items-center gap-4">
+            
+            {/* Yearly report buttons (shown on month selection screen) */}
+            {showYearlyActions && (
+                <>
+                <button
+                    onClick={() => setView('yearlyReport')}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md"
+                >
+                    <ReportIcon className="w-5 h-5" />
+                    <span>Aggregate Yearly Report</span>
+                </button>
+                <button
+                    onClick={() => setView('bialYearlyReport')}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all shadow-md"
+                >
+                    <ReportIcon className="w-5 h-5" />
+                    <span>Bial Yearly Report</span>
+                </button>
+                </>
+            )}
+
+            {/* Monthly actions (shown on tithe entry screen) */}
+            {showMonthlyActions && (
+                <>
+                 {isAdmin && (
+                    <button 
+                        onClick={() => setView('report')} 
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all shadow-md"
+                    >
+                        <ReportIcon className="w-5 h-5" />
+                        <span>Aggregate Monthly Report</span>
+                    </button>
+                )}
+                <button onClick={handleExportBialPdf} className="flex items-center gap-2 bg-red-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-red-700 transition-all">
+                    <PdfIcon className="w-5 h-5" />
+                    <span>Export Monthly PDF</span>
+                </button>
+                <button onClick={handleExportBialExcel} className="flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-green-700 transition-all">
+                    <ExportIcon className="w-5 h-5" />
+                    <span>Export Monthly Excel</span>
+                </button>
+                </>
+            )}
+            </div>
+        </div>
+      )}
+
       <footer className="mt-12 text-center text-slate-500 text-sm no-print">
          <div className="flex items-center justify-center gap-4 mb-4">
              <span>Logged in as: <strong>{user.email}</strong> {user.isAdmin ? '(Admin)' : `(${user.assignedBial})`}</span>

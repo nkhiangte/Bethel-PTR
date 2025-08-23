@@ -5,12 +5,10 @@ interface MonthSelectionProps {
   year: number;
   onSelectMonth: (month: string) => void;
   onBack?: () => void;
-  onViewYearlyReport: () => void;
-  onViewBialYearlyReport: () => void;
   onGoToDashboard: () => void;
 }
 
-export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, onSelectMonth, onBack, onViewYearlyReport, onViewBialYearlyReport, onGoToDashboard }) => {
+export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, onSelectMonth, onBack, onGoToDashboard }) => {
   return (
     <div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
@@ -23,7 +21,7 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
                 )}
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Kum {year} atan A Thla thlang rawn</h2>
-                  <p className="text-slate-500">Or view the report for the entire year.</p>
+                  <p className="text-slate-500">Select a month to enter tithe data.</p>
                 </div>
             </div>
             <div className="flex flex-col sm:flex-row flex-shrink-0 gap-2">
@@ -36,18 +34,6 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
                         <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                     </svg>
                     <span className="hidden sm:inline">Dashboard</span>
-                </button>
-                 <button
-                    onClick={onViewYearlyReport}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-200 ease-in-out shadow-md"
-                >
-                    View Aggregate Yearly Report
-                </button>
-                <button
-                    onClick={onViewBialYearlyReport}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-200 ease-in-out shadow-md"
-                >
-                    View Bial Yearly Report
                 </button>
             </div>
         </div>
