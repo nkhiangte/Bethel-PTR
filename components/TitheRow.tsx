@@ -59,7 +59,7 @@ const TransferIcon: React.FC<{className?: string}> = ({ className }) => (
         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
         <path d="m14.09 12.41-2.5-2.5.71-.71 1.79 1.8 1.79-1.8.71.71-2.5 2.5zM12 16.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-8c-1.93 0-3.5 1.57-3.5 3.5s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5z" opacity="0"/>
         <path d="M12.79 13.21 11.29 11.71 9.79 13.21 9.08 12.5 11.29 10.29 13.5 12.5Z"/>
-        <path d="M12 7.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5S14.49 7.5 12 7.5zm0 8c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+        <path d="M12 7.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5S14.49 7.5 12 7.5zm0 8c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5 3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
     </svg>
 );
 
@@ -148,7 +148,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     return (
         <tr className="group hover:bg-sky-100 transition-colors duration-150">
             {/* IP Serial No. */}
-            <td className="px-2 py-3 sm:px-3 text-sm text-slate-600 whitespace-nowrap">
+            <td className="px-2 py-2 sm:px-3 text-sm text-slate-600 whitespace-nowrap">
                 {isEditing ? (
                      <input
                         type="text" // Use text to allow empty input
@@ -163,7 +163,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                 )}
             </td>
             {/* Family Name */}
-            <td className="px-2 py-3 sm:px-3 text-base font-medium text-slate-800 whitespace-nowrap">
+            <td className="px-2 py-2 sm:px-3 text-base font-medium text-slate-800 whitespace-nowrap">
                 {isEditing ? (
                     <input 
                         ref={nameInputRef}
@@ -178,21 +178,21 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                 )}
             </td>
             {/* Tithe Amounts */}
-            <td className="px-2 py-3 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-2 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(family.tithe.pathianRam)}
             </td>
-            <td className="px-2 py-3 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-2 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(family.tithe.ramthar)}
             </td>
-            <td className="px-2 py-3 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-2 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(family.tithe.tualchhung)}
             </td>
             {/* Total */}
-            <td className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-900 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td className="px-2 py-2 sm:px-3 text-right text-sm font-bold text-slate-900 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
                 {formatCurrency(familyTotal)}
             </td>
             {/* Actions */}
-            <td className="px-2 py-3 sm:px-3 text-center no-print">
+            <td className="px-2 py-2 sm:px-3 text-center no-print">
                 <div className="flex items-center justify-center gap-1 sm:gap-2">
                     {isEditing ? (
                         <>

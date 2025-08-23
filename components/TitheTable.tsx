@@ -53,25 +53,25 @@ export const TitheTable: React.FC<TitheTableProps> = ({
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-sky-100">
           <tr>
-            <th scope="col" className="px-2 py-3 sm:px-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-2 sm:px-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider">
               S/N
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-2 sm:px-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider">
               Chhungkua
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-2 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               PTR
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-2 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               RT
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-2 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               TCH
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-2 py-2 sm:px-3 text-right text-sm font-bold text-slate-600 uppercase tracking-wider">
               Total
             </th>
-            <th scope="col" className="px-2 py-3 sm:px-3 text-center text-sm font-bold text-slate-600 uppercase tracking-wider no-print">
+            <th scope="col" className="px-2 py-2 sm:px-3 text-center text-sm font-bold text-slate-600 uppercase tracking-wider no-print">
               Actions
             </th>
           </tr>
