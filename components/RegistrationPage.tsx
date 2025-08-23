@@ -29,7 +29,11 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
             await api.createUserDocument(userCredential.user);
             setSuccessMessage("Registration successful! Please check with your administrator to have your role assigned before logging in.");
         } catch (err: any) {
-            setError(err.message || "Failed to register. Please try again.");
+            let errorMessage = err.message || "Failed to register. Please try again.";
+            if (err.code === 'permission-denied' || (err.message && err.message.toLowerCase().includes('permission denied'))) {
+                errorMessage = "Registration failed due to a permissions issue. Please contact the administrator to ensure the database is configured to allow new user sign-ups.";
+            }
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }

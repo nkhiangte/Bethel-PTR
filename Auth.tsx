@@ -19,8 +19,23 @@ export const Auth: React.FC = () => {
         const auth = getFirebaseAuth();
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
             if (firebaseUser) {
-                // Fetch user roles from Firestore instead of claims
-                const userDoc = await api.fetchUserDocument(firebaseUser.uid);
+                let userDoc = await api.fetchUserDocument(firebaseUser.uid);
+
+                // If user exists in Auth but not Firestore, attempt to create their document.
+                // This handles cases where registration was incomplete.
+                if (!userDoc) {
+                    console.log(`User document not found for UID: ${firebaseUser.uid}. Attempting to create it.`);
+                    try {
+                        await api.createUserDocument(firebaseUser);
+                        userDoc = await api.fetchUserDocument(firebaseUser.uid); // Re-fetch the document
+                    } catch (error) {
+                        console.error(`Failed to create user document for UID: ${firebaseUser.uid}. Forcing logout.`, error);
+                        await firebaseSignOut(auth);
+                        setUser(null);
+                        setAuthLoading(false);
+                        return;
+                    }
+                }
                 
                 if (userDoc) {
                     const appUser: User = {
@@ -32,9 +47,8 @@ export const Auth: React.FC = () => {
                     };
                     setUser(appUser);
                 } else {
-                    // This can happen if user is authenticated but their Firestore doc was deleted.
-                    // Safest to log out.
-                    console.error(`User document not found for UID: ${firebaseUser.uid}. Forcing logout.`);
+                    // This case should be rare now, but as a safeguard:
+                    console.error(`User document still not found for UID: ${firebaseUser.uid} after creation attempt. Forcing logout.`);
                     await firebaseSignOut(auth);
                     setUser(null);
                 }

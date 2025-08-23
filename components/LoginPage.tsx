@@ -48,7 +48,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwit
                 await api.createUserDocument(result.user);
             }
         } catch (err: any) {
-             setError(err.message || "Failed to sign in with Google.");
+             let errorMessage = err.message || "Failed to sign in with Google.";
+             if (err.code === 'permission-denied' || (err.message && err.message.toLowerCase().includes('permission denied'))) {
+                errorMessage = "Sign-in failed because your user profile could not be created in the database. Please contact the administrator.";
+             }
+             setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
