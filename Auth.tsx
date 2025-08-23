@@ -1,67 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import App from './App.tsx';
-import { LoginPage } from './components/LoginPage.tsx';
-import { RegistrationPage } from './components/RegistrationPage.tsx';
+import { GoogleLoginPage } from './components/GoogleLoginPage.tsx';
+import { ConfigPage } from './components/ConfigPage.tsx';
+import * as googleApi from './googleApi.ts';
 import * as api from './api.ts';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import type { User } from './types.ts';
 
-type AuthView = 'login' | 'register';
-
-interface AuthState {
-    isAuthenticated: boolean;
-    assignedBial: string | null;
-    isLoading: boolean;
-}
+type AuthStatus = 'loading' | 'needsConfig' | 'needsLogin' | 'syncing' | 'loggedIn';
 
 const Auth: React.FC = () => {
-    const [auth, setAuth] = useState<AuthState>({ isAuthenticated: false, assignedBial: null, isLoading: true });
-    const [view, setView] = useState<AuthView>('login');
+    const [status, setStatus] = useState<AuthStatus>('loading');
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-    useEffect(() => {
-        const checkAuth = async () => {
-            const user = await api.getCurrentUser();
-            if (user) {
-                setAuth({ isAuthenticated: true, assignedBial: user.assignedBial, isLoading: false });
+    const initialize = useCallback(async () => {
+        const config = googleApi.getConfig();
+        if (!config.apiKey || !config.clientId) {
+            setStatus('needsConfig');
+            return;
+        }
+
+        try {
+            await googleApi.initClient();
+            const googleUser = googleApi.getCurrentGoogleUser();
+            
+            if (googleUser) {
+                setStatus('syncing');
+                await api.initializeApi();
+                const user = await api.getOrCreateUser({ 
+                    id: googleUser.id, 
+                    name: googleUser.name, 
+                    email: googleUser.email 
+                });
+                setCurrentUser(user);
+                setStatus('loggedIn');
             } else {
-                setAuth({ isAuthenticated: false, assignedBial: null, isLoading: false });
+                setStatus('needsLogin');
             }
-        };
-        checkAuth();
+        } catch (error) {
+            console.error("Initialization failed:", error);
+            // If init fails, maybe the config is bad.
+            // For simplicity, we'll just show login. A better UX might prompt to re-configure.
+            setStatus('needsLogin');
+        }
     }, []);
 
-    const handleLoginSuccess = (user: User) => {
-        setAuth({ isAuthenticated: true, assignedBial: user.assignedBial, isLoading: false });
+    useEffect(() => {
+        initialize();
+    }, [initialize]);
+
+    const handleConfigSaved = () => {
+        setStatus('loading');
+        initialize();
+    };
+
+    const handleLoginSuccess = async (googleUser: { id: string; name: string; email: string; }) => {
+        setStatus('syncing');
+        await api.initializeApi();
+        const user = await api.getOrCreateUser(googleUser);
+        setCurrentUser(user);
+        setStatus('loggedIn');
     };
 
     const handleLogout = () => {
-        api.logout();
-        setAuth({ isAuthenticated: false, assignedBial: null, isLoading: false });
-        setView('login');
+        googleApi.signOut();
+        setCurrentUser(null);
+        setStatus('needsLogin');
     };
 
-    if (auth.isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner message="Checking session..." />
-            </div>
-        )
-    }
-    
-    const renderAuthView = () => {
-        switch(view) {
-            case 'register':
-                return <RegistrationPage onSwitchToLogin={() => setView('login')} />;
-            case 'login':
+    const renderContent = () => {
+        switch (status) {
+            case 'loading':
+                return <LoadingSpinner message="Initializing..." />;
+            case 'needsConfig':
+                return <ConfigPage onConfigSaved={handleConfigSaved} />;
+            case 'needsLogin':
+                return <GoogleLoginPage onLoginSuccess={handleLoginSuccess} />;
+            case 'syncing':
+                return <LoadingSpinner message="Syncing with Google Drive..." />;
+            case 'loggedIn':
+                if (currentUser) {
+                    return <App onLogout={handleLogout} assignedBial={currentUser.assignedBial} />;
+                }
+                // Fallback in case state is inconsistent
+                setStatus('needsLogin');
+                return <LoadingSpinner message="An error occurred. Redirecting..." />;
             default:
-                return <LoginPage onLoginSuccess={handleLoginSuccess} onSwitchToRegister={() => setView('register')} />;
+                return <div>An unexpected error occurred.</div>;
         }
-    }
+    };
 
     return (
-         <div className="min-h-screen bg-sky-100 text-slate-800 antialiased">
-            {auth.isAuthenticated ? <App onLogout={handleLogout} assignedBial={auth.assignedBial} /> : renderAuthView()}
-         </div>
+        <div className="min-h-screen bg-sky-100 text-slate-800 antialiased">
+           <div className="flex items-center justify-center min-h-screen">
+                {renderContent()}
+           </div>
+        </div>
     );
 };
 
