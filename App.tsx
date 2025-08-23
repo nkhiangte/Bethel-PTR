@@ -18,7 +18,7 @@ import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
 import * as api from './api.ts';
-import type { Family, TitheCategory, Tithe, AggregateReportData } from './types.ts';
+import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe } from './types.ts';
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -43,7 +43,7 @@ const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
     </svg>
 );
 
@@ -52,12 +52,12 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(null);
   
-  const [families, setFamilies] = useState<Family[]>([]);
+  const [families, setFamilies] = useState<FamilyWithTithe[]>([]);
   const [monthlyReportData, setMonthlyReportData] = useState<AggregateReportData | null>(null);
   const [yearlyReportData, setYearlyReportData] = useState<AggregateReportData | null>(null);
   
-  const [familyForModal, setFamilyForModal] = useState<Family | null>(null);
-  const [familyToTransfer, setFamilyToTransfer] = useState<Family | null>(null);
+  const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
+  const [familyToTransfer, setFamilyToTransfer] = useState<FamilyWithTithe | null>(null);
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
   const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport'>('entry');
   
@@ -152,7 +152,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setIsLoading(true);
     setError(null);
     try {
-      await api.addFamily(selectedYear, selectedMonth, selectedUpaBial, name.trim());
+      await api.addFamily(selectedYear, selectedUpaBial, name.trim());
       const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
       setFamilies(updatedFamilies);
     } catch (e: any) {
@@ -167,7 +167,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setIsLoading(true);
     setError(null);
     try {
-        const { added, skipped } = await api.importFamilies(selectedYear, selectedMonth, selectedUpaBial, names);
+        const { added, skipped } = await api.importFamilies(selectedYear, selectedUpaBial, names);
         
         let message = `${added} new families imported successfully!`;
         if (skipped > 0) {
@@ -217,7 +217,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         const newFamilies = prevFamilies.filter(f => f.id !== familyId);
 
         setError(null);
-        api.removeFamily(selectedYear, selectedMonth, selectedUpaBial, familyId)
+        api.removeFamily(familyId)
             .catch(() => {
                 setError("Failed to remove family. Reverting.");
                 setFamilies(prevFamilies);
@@ -258,7 +258,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         });
   }, [selectedYear, selectedMonth, selectedUpaBial, families]);
 
-  const handleOpenTitheModal = (family: Family) => setFamilyForModal(family);
+  const handleOpenTitheModal = (family: FamilyWithTithe) => setFamilyForModal(family);
   const handleCloseTitheModal = () => setFamilyForModal(null);
 
   const handleSaveTitheModal = useCallback((familyId: string, newTithe: Tithe) => {
@@ -300,7 +300,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
         });
   }, [selectedYear, selectedMonth, selectedUpaBial, families]);
 
-  const handleOpenTransferModal = (family: Family) => setFamilyToTransfer(family);
+  const handleOpenTransferModal = (family: FamilyWithTithe) => setFamilyToTransfer(family);
   const handleCloseTransferModal = () => {
     setFamilyToTransfer(null);
     setError(null); // Clear any errors when closing the modal
@@ -313,7 +313,7 @@ const App: React.FC<AppProps> = ({ onLogout, assignedBial }) => {
     setIsLoading(true);
 
     try {
-        await api.transferFamily(selectedYear, familyId, selectedUpaBial, destinationBial);
+        await api.transferFamily(familyId, destinationBial);
         
         // Remove family from current view
         setFamilies(prev => prev.filter(f => f.id !== familyId));

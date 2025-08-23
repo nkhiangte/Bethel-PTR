@@ -1,19 +1,19 @@
 
 
 import React, { useMemo } from 'react';
-import type { Family, TitheCategory } from '../types.ts';
+import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 import { TitheRow } from './TitheRow.tsx';
 import { LoadingSpinner } from './LoadingSpinner.tsx';
 
 interface TitheTableProps {
-  families: Family[];
+  families: FamilyWithTithe[];
   isLoading: boolean;
   onTitheChange: (familyId: string, category: TitheCategory, value: number) => void;
   onRemoveFamily: (familyId: string) => void;
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
-  onOpenTitheModal: (family: Family) => void;
-  onOpenTransferModal: (family: Family) => void;
+  onOpenTitheModal: (family: FamilyWithTithe) => void;
+  onOpenTransferModal: (family: FamilyWithTithe) => void;
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string; name: string}) => void;
 }

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { Family, Tithe } from '../types.ts';
+import type { FamilyWithTithe, Tithe } from '../types.ts';
 
 interface TitheModalProps {
-    family: Family;
+    family: FamilyWithTithe;
     onClose: () => void;
     onSave: (familyId: string, newTithe: Tithe) => void;
 }

@@ -6,7 +6,7 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -17,10 +17,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         setIsLoading(true);
 
         try {
-            await api.login(phone.trim(), password.trim());
-            onLoginSuccess();
+            await api.login(email.trim(), password.trim());
+            onLoginSuccess(); // This is now just a confirmation; Auth.tsx handles the state change
         } catch (err: any) {
-            setError(err.message || 'Login failed. Please try again.');
+            setError(err.message || 'Login failed. Please check your credentials.');
         } finally {
             setIsLoading(false);
         }
@@ -42,17 +42,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     {error && <p className="text-center text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
                     <div className="rounded-md shadow-sm -space-y-px">
                         <div>
-                            <label htmlFor="phone-number" className="sr-only">Username / Phone</label>
+                            <label htmlFor="email-address" className="sr-only">Email address</label>
                             <input
-                                id="phone-number"
-                                name="phone"
-                                type="text"
-                                autoComplete="username"
+                                id="email-address"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
                                 required
                                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 rounded-t-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm bg-sky-100"
-                                placeholder="Username / Phone"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="Email Address"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 disabled={isLoading}
                             />
                         </div>

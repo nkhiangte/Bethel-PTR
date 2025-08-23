@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import type { Family } from '../types.ts';
+import type { FamilyWithTithe } from '../types.ts';
 
 interface TransferFamilyModalProps {
-    family: Family;
+    family: FamilyWithTithe;
     upaBials: string[];
     currentBial: string;
     onClose: () => void;

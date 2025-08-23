@@ -5,27 +5,28 @@ export interface Tithe {
 }
 
 export interface Family {
-  id: string;
+  id: string; // Firestore document ID
   name: string;
   ipSerialNo: number | null;
+  currentBial: string; // The Upa Bial this family belongs to
+}
+
+// Represents a single month's tithe data for a family in Firestore
+export interface TitheLog {
+  year: number;
+  month: string;
+  familyId: string;
+  upaBial: string;
   tithe: Tithe;
 }
 
+// This is a hydrated object, combining Family and their monthly TitheLog
+export interface FamilyWithTithe extends Omit<Family, 'currentBial'> {
+  tithe: Tithe;
+}
+
+
 export type TitheCategory = keyof Tithe;
-
-
-// New Types for nested data structure
-export interface UpaBialData {
-  [upaBial: string]: Family[];
-}
-
-export interface MonthlyData {
-  [month: string]: UpaBialData;
-}
-
-export interface YearlyData {
-  [year: number]: MonthlyData;
-}
 
 // New Types for Aggregate Report
 export interface BialTotal {
@@ -41,10 +42,9 @@ export interface AggregateReportData {
 
 // For Authentication
 export interface User {
-  id: string;
+  uid: string;
   name: string;
-  phone: string;
-  passwordHash: string; // In a real app, this would be a securely hashed password
+  email: string;
   assignedBial: string | null; // e.g., "Upa Bial 1", null for admin
 }
 
@@ -54,6 +54,6 @@ export interface FamilyYearlyTitheData {
 }
 
 // For Bial Yearly Report (list of families with yearly totals)
-export interface YearlyFamilyTotal extends Omit<Family, 'tithe'> {
+export interface YearlyFamilyTotal extends Omit<Family, 'currentBial'> {
     tithe: Tithe;
 }

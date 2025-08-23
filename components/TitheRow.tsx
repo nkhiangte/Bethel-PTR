@@ -1,16 +1,16 @@
 
 
 import React, { useState, useRef, useEffect } from 'react';
-import type { Family, TitheCategory } from '../types.ts';
+import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 
 interface TitheRowProps {
-  family: Family;
+  family: FamilyWithTithe;
   onTitheChange: (familyId: string, category: TitheCategory, value: number) => void;
   onRemoveFamily: (familyId: string) => void;
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
-  onOpenTitheModal: (family: Family) => void;
-  onOpenTransferModal: (family: Family) => void;
+  onOpenTitheModal: (family: FamilyWithTithe) => void;
+  onOpenTransferModal: (family: FamilyWithTithe) => void;
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string, name: string}) => void;
   formatCurrency: (value: number) => string;

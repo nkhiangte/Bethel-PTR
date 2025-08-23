@@ -2,55 +2,73 @@ import React, { useState, useEffect } from 'react';
 import App from './App.tsx';
 import { LoginPage } from './components/LoginPage.tsx';
 import * as api from './api.ts';
+import { auth } from './firebase.ts';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 
 interface AuthState {
     isAuthenticated: boolean;
     assignedBial: string | null;
+    isLoading: boolean;
 }
 
-const getAuthState = (): AuthState => {
-    const isAuthenticated = api.checkAuth();
-    // If not authenticated, don't bother checking for a bial
-    if (!isAuthenticated) {
-        return { isAuthenticated: false, assignedBial: null };
-    }
-    return {
-        isAuthenticated: true,
-        assignedBial: api.getAssignedBial(),
-    };
-};
-
 const Auth: React.FC = () => {
-    const [auth, setAuth] = useState<AuthState>(getAuthState);
-    const [storageError, setStorageError] = useState<string | null>(null);
+    const [auth, setAuth] = useState<AuthState>({ isAuthenticated: false, assignedBial: null, isLoading: true });
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        try {
-            localStorage.setItem('__test', 'test');
-            localStorage.removeItem('__test');
-        } catch (e) {
-            setStorageError('Your browser does not support or has disabled local storage, which is required for this app to function. Please enable it or use a different browser.');
+        // Test for firebase config placeholder
+        if (api.isFirebaseConfigPlaceholder()) {
+            setError('Firebase is not configured. Please add your firebaseConfig to firebase.ts');
+            setAuth(prev => ({ ...prev, isLoading: false }));
+            return;
         }
+
+        const unsubscribe = onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
+            if (user) {
+                try {
+                    const assignedBial = await api.getAssignedBial(user.uid);
+                    setAuth({ isAuthenticated: true, assignedBial, isLoading: false });
+                } catch (e) {
+                    console.error("Error fetching user data:", e);
+                    // Log out the user if their data can't be fetched, as it's a critical error
+                    await api.logout();
+                    setAuth({ isAuthenticated: false, assignedBial: null, isLoading: false });
+                }
+            } else {
+                setAuth({ isAuthenticated: false, assignedBial: null, isLoading: false });
+            }
+        });
+
+        return () => unsubscribe(); // Cleanup subscription on unmount
     }, []);
 
     const handleLoginSuccess = () => {
-        setAuth(getAuthState());
+        // onAuthStateChanged will handle the state update automatically
     };
 
     const handleLogout = () => {
         api.logout();
-        setAuth({ isAuthenticated: false, assignedBial: null });
     };
 
-    if (storageError) {
-        return (
+    if (error) {
+         return (
             <div className="flex items-center justify-center min-h-screen p-4">
-                <div className="w-full max-w-md p-8 bg-red-50 rounded-2xl shadow-lg border border-red-200">
-                    <h2 className="text-xl font-bold text-red-800 text-center">Unsupported Browser</h2>
-                    <p className="mt-4 text-red-700 text-center">{storageError}</p>
+                <div className="w-full max-w-lg p-8 bg-red-50 rounded-2xl shadow-lg border border-red-200">
+                    <h2 className="text-xl font-bold text-red-800 text-center">Configuration Error</h2>
+                    <p className="mt-4 text-red-700 text-center">{error}</p>
+                    <p className="mt-2 text-sm text-slate-600 text-center">You need to create a Firebase project and paste the configuration object into the `firebase.ts` file.</p>
                 </div>
             </div>
         );
+    }
+
+    if (auth.isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <LoadingSpinner message="Checking authentication..." />
+            </div>
+        )
     }
 
     return (
