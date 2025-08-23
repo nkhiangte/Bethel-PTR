@@ -56,6 +56,44 @@ const ReportIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const { assignedBial, isAdmin } = user;
+  
+  // Handle new users who have not been assigned a role yet
+  if (!isAdmin && !assignedBial) {
+    return (
+      <div className="container mx-auto p-4 sm:p-6 md:p-8">
+        <Header onLogoClick={() => {}} />
+        <main className="mt-8 mb-24">
+          <div className="flex flex-col items-center justify-center text-center p-4">
+            <div className="max-w-md w-full bg-sky-50 p-8 rounded-2xl shadow-lg border border-slate-200">
+                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-16 w-16 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 className="mt-6 text-2xl font-bold text-slate-800">Account Pending Approval</h2>
+                <p className="mt-4 text-slate-600">
+                    Your registration is successful. An administrator needs to approve your account and assign you a role before you can proceed.
+                </p>
+                <p className="mt-2 text-slate-500">
+                    Please contact your administrator for assistance.
+                </p>
+            </div>
+          </div>
+        </main>
+        <footer className="mt-12 text-center text-slate-500 text-sm no-print">
+           <div className="flex items-center justify-center gap-4 mb-4">
+               <span>Logged in as: <strong>{user.email}</strong> (Pending Approval)</span>
+               <button
+                   onClick={onLogout}
+                   className="bg-slate-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all"
+               >
+                  Logout
+               </button>
+           </div>
+           <p>Champhai Bethel Presbyterian Kohhran App. All rights reserved.</p>
+        </footer>
+      </div>
+    );
+  }
+
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(null);
