@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../firebase';
+import { getFirebaseAuth } from '../firebase';
 
 interface ForgotPasswordPageProps {
     onSwitchToLogin: () => void;
@@ -18,7 +18,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSwitch
         setError(null);
         setSuccessMessage(null);
         try {
-            await sendPasswordResetEmail(auth, email);
+            await sendPasswordResetEmail(getFirebaseAuth(), email);
             setSuccessMessage("Password reset email sent! Please check your inbox.");
         } catch (err: any) {
             setError(err.message || "Failed to send reset email. Please check the address and try again.");

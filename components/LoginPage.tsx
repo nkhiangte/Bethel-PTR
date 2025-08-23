@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { getFirebaseAuth, getGoogleProvider } from '../firebase';
 import * as api from '../api.ts';
 
 
@@ -30,7 +30,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwit
         setIsLoading(true);
         setError(null);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
         } catch (err: any) {
             setError(err.message || "Failed to log in. Please check your credentials.");
         } finally {
@@ -42,7 +42,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwit
         setIsLoading(true);
         setError(null);
         try {
-            const result = await signInWithPopup(auth, googleProvider);
+            const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
             const additionalInfo = getAdditionalUserInfo(result);
             if (additionalInfo?.isNewUser) {
                 await api.createUserDocument(result.user);

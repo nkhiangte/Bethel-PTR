@@ -1,4 +1,4 @@
-import { db } from './firebase.ts';
+import { getFirebaseDb } from './firebase.ts';
 import { 
     collection,
     query,
@@ -26,6 +26,7 @@ const MONTHS = [
 // --- USER MANAGEMENT API ---
 
 export const createUserDocument = async (user: FirebaseUser): Promise<void> => {
+    const db = getFirebaseDb();
     const userRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userRef);
 
@@ -43,12 +44,14 @@ export const createUserDocument = async (user: FirebaseUser): Promise<void> => {
 };
 
 export const fetchAllUsers = async (): Promise<UserDoc[]> => {
+    const db = getFirebaseDb();
     const usersQuery = query(collection(db, 'users'), orderBy('email'));
     const snapshot = await getDocs(usersQuery);
     return snapshot.docs.map(d => d.data() as UserDoc);
 };
 
 export const updateUserRoles = async (uid: string, roles: { isAdmin: boolean; assignedBial: string | null }): Promise<void> => {
+    const db = getFirebaseDb();
     const userRef = doc(db, 'users', uid);
     await updateDoc(userRef, {
         isAdmin: roles.isAdmin,
@@ -60,11 +63,13 @@ export const updateUserRoles = async (uid: string, roles: { isAdmin: boolean; as
 // --- TITHE & FAMILY API ---
 
 const getTitheLogRef = (year: number, month: string, familyId: string) => {
+    const db = getFirebaseDb();
     const logId = `${year}_${month}_${familyId}`;
     return doc(db, 'titheLogs', logId);
 };
 
 export const fetchFamilies = async (year: number, month: string, upaBial: string): Promise<FamilyWithTithe[]> => {
+    const db = getFirebaseDb();
     const familiesQuery = query(collection(db, 'families'), where('currentBial', '==', upaBial));
     const familiesSnapshot = await getDocs(familiesQuery);
 
@@ -93,6 +98,7 @@ export const fetchFamilies = async (year: number, month: string, upaBial: string
 };
 
 export const addFamily = async (year: number, upaBial: string, name: string): Promise<void> => {
+    const db = getFirebaseDb();
     const trimmedName = name.trim();
     const q = query(collection(db, 'families'), where('name', '==', trimmedName), where('currentBial', '==', upaBial));
     const existing = await getDocs(q);
@@ -110,6 +116,7 @@ export const addFamily = async (year: number, upaBial: string, name: string): Pr
 };
 
 export const importFamilies = async (year: number, upaBial: string, names: string[]): Promise<{added: number, skipped: number}> => {
+    const db = getFirebaseDb();
     const batch = writeBatch(db);
     const familiesRef = collection(db, 'families');
     
@@ -146,6 +153,7 @@ export const importFamilies = async (year: number, upaBial: string, names: strin
 };
 
 export const updateTithe = async (year: number, month: string, upaBial: string, familyId: string, categoryOrTithe: TitheCategory | Tithe, value?: number): Promise<void> => {
+    const db = getFirebaseDb();
     const logRef = getTitheLogRef(year, month, familyId);
     
     await runTransaction(db, async (transaction) => {
@@ -180,11 +188,13 @@ export const updateTithe = async (year: number, month: string, upaBial: string, 
 };
 
 export const updateFamilyDetails = async (familyId: string, data: { name?: string; ipSerialNo?: number | null }): Promise<void> => {
+    const db = getFirebaseDb();
     const familyRef = doc(db, 'families', familyId);
     await updateDoc(familyRef, data);
 };
 
 export const removeFamily = async (familyId: string): Promise<void> => {
+    const db = getFirebaseDb();
     const batch = writeBatch(db);
     
     // Delete the family document
@@ -202,6 +212,7 @@ export const removeFamily = async (familyId: string): Promise<void> => {
 };
 
 export const transferFamily = async (familyId: string, destinationUpaBial: string): Promise<void> => {
+    const db = getFirebaseDb();
     const batch = writeBatch(db);
 
     // Update the family's currentBial
@@ -220,6 +231,7 @@ export const transferFamily = async (familyId: string, destinationUpaBial: strin
 
 // --- REPORTING API ---
 export const fetchMonthlyReport = async (year: number, month: string): Promise<AggregateReportData> => {
+    const db = getFirebaseDb();
     const report: AggregateReportData = {};
     const logsQuery = query(collection(db, 'titheLogs'), where('year', '==', year), where('month', '==', month));
     const logsSnapshot = await getDocs(logsQuery);
@@ -239,6 +251,7 @@ export const fetchMonthlyReport = async (year: number, month: string): Promise<A
 };
 
 export const fetchYearlyReport = async (year: number): Promise<AggregateReportData> => {
+    const db = getFirebaseDb();
     const report: AggregateReportData = {};
     const logsQuery = query(collection(db, 'titheLogs'), where('year', '==', year));
     const logsSnapshot = await getDocs(logsQuery);
@@ -258,6 +271,7 @@ export const fetchYearlyReport = async (year: number): Promise<AggregateReportDa
 };
 
 export const fetchFamilyYearlyData = async (year: number, familyId: string): Promise<{ data: FamilyYearlyTitheData, familyInfo: { name: string, ipSerialNo: number | null, upaBial: string } }> => {
+    const db = getFirebaseDb();
     const familyRef = doc(db, 'families', familyId);
     const familyDoc = await getDoc(familyRef);
     if (!familyDoc.exists()) {
@@ -283,6 +297,7 @@ export const fetchFamilyYearlyData = async (year: number, familyId: string): Pro
 
 
 export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): Promise<YearlyFamilyTotal[]> => {
+    const db = getFirebaseDb();
     const familiesQuery = query(collection(db, 'families'), where('currentBial', '==', upaBial));
     const familiesSnapshot = await getDocs(familiesQuery);
     if (familiesSnapshot.empty) return [];

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import { getFirebaseAuth } from '../firebase';
 import * as api from '../api.ts';
 
 interface RegistrationPageProps {
@@ -25,7 +25,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
         setError(null);
         setSuccessMessage(null);
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
             await api.createUserDocument(userCredential.user);
             setSuccessMessage("Registration successful! Please check with your administrator to have your role assigned before logging in.");
         } catch (err: any) {
