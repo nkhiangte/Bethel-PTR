@@ -30,14 +30,26 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport }) => {
         const workbook = read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        // Assuming names are in the first column
-        const jsonData: any[][] = utils.sheet_to_json(worksheet, { header: 1 });
         
-        const names = jsonData
-          .map(row => row[0])
-          .filter((name): name is string => typeof name === 'string' && name.trim() !== '')
-          .map(name => name.trim());
+        const names: string[] = [];
+        const range = utils.decode_range(worksheet['!ref'] || 'A1');
 
+        // Manually iterate over rows to ensure all are read
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            // We only read the first column (C=0)
+            const cell_address = { c: 0, r: R };
+            const cell_ref = utils.encode_cell(cell_address);
+            const cell = worksheet[cell_ref];
+            
+            // Check if cell has a value
+            if (cell && cell.v) {
+                const name = String(cell.v).trim();
+                if (name) { // Ensure name is not an empty string
+                    names.push(name);
+                }
+            }
+        }
+        
         if (names.length > 0) {
             onImport(names, (message) => {
                 alert(message);
