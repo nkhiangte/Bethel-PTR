@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-// Fix: Use scoped firebase package for auth imports to resolve module export errors.
-import { signInWithEmailAndPassword, signInWithPopup, getAdditionalUserInfo } from '@firebase/auth';
-import { getFirebaseAuth, getGoogleProvider } from '../firebase';
+// Fix: Removed v9 modular imports. v8 compat functions are called on auth object.
+import { auth, googleProvider } from '../firebase.ts';
 import * as api from '../api.ts';
 
 
@@ -31,7 +30,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwit
         setIsLoading(true);
         setError(null);
         try {
-            await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+            // Fix: Use v8 compat signInWithEmailAndPassword
+            await auth.signInWithEmailAndPassword(email, password);
         } catch (err: any) {
             setError(err.message || "Failed to log in. Please check your credentials.");
         } finally {
@@ -43,10 +43,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwit
         setIsLoading(true);
         setError(null);
         try {
-            const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
-            const additionalInfo = getAdditionalUserInfo(result);
+            // Fix: Use v8 compat signInWithPopup
+            const result = await auth.signInWithPopup(googleProvider);
+            // Fix: Use v8 compat additionalUserInfo from result object
+            const additionalInfo = result.additionalUserInfo;
             if (additionalInfo?.isNewUser) {
-                await api.createUserDocument(result.user);
+                await api.createUserDocument(result.user!);
             }
         } catch (err: any) {
              let errorMessage = err.message || "Failed to sign in with Google.";

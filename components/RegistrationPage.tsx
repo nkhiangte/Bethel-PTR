@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-// Fix: Use scoped firebase package for auth imports to resolve module export errors.
-import { createUserWithEmailAndPassword } from '@firebase/auth';
-import { getFirebaseAuth } from '../firebase';
+// Fix: Removed v9 modular import. v8 compat function is called on auth object.
+import { auth } from '../firebase.ts';
 import * as api from '../api.ts';
 
 interface RegistrationPageProps {
@@ -26,8 +25,9 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
         setError(null);
         setSuccessMessage(null);
         try {
-            const userCredential = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
-            await api.createUserDocument(userCredential.user);
+            // Fix: Use v8 compat createUserWithEmailAndPassword
+            const userCredential = await auth.createUserWithEmailAndPassword(auth, email, password);
+            await api.createUserDocument(userCredential.user!);
             setSuccessMessage("Registration successful! Please check with your administrator to have your role assigned before logging in.");
         } catch (err: any) {
             let errorMessage = err.message || "Failed to register. Please try again.";

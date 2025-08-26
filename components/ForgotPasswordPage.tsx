@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-// Fix: Use scoped firebase package for auth imports to resolve module export errors.
-import { sendPasswordResetEmail } from '@firebase/auth';
-import { getFirebaseAuth } from '../firebase';
+// Fix: Removed v9 modular import. v8 compat function is called on auth object.
+import { auth } from '../firebase';
 
 interface ForgotPasswordPageProps {
     onSwitchToLogin: () => void;
@@ -19,7 +18,8 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSwitch
         setError(null);
         setSuccessMessage(null);
         try {
-            await sendPasswordResetEmail(getFirebaseAuth(), email);
+            // Fix: Use v8 compat sendPasswordResetEmail
+            await auth.sendPasswordResetEmail(email);
             setSuccessMessage("Password reset email sent! Please check your inbox.");
         } catch (err: any) {
             setError(err.message || "Failed to send reset email. Please check the address and try again.");

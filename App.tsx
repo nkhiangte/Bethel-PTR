@@ -55,6 +55,12 @@ const ReportIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const UploadIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+    </svg>
+);
+
 
 const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const { assignedBial, isAdmin } = user;
@@ -252,6 +258,11 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const handleImportContributions = async (year: number, month: string, upaBial: string, data: any[]) => {
     try {
         const result = await api.importContributions(year, month, upaBial, data);
+        // After successful import, refresh the family data for the current view
+        if (year === selectedYear && month === selectedMonth && upaBial === selectedUpaBial) {
+             const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
+             setFamilies(updatedFamilies);
+        }
         return result;
     } catch (e: any) {
         console.error('Failed to import contributions:', e);
@@ -613,8 +624,16 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 <div className="flex-grow">
                     <AddFamilyForm onAddFamily={handleAddFamily} />
                 </div>
-                 <div className="flex-shrink-0">
+                 <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2">
                     <ImportFamilies onImport={handleImportFamilies} />
+                    <button
+                        type="button"
+                        onClick={() => setIsImportContributionsModalOpen(true)}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md"
+                    >
+                        <UploadIcon className="w-5 h-5" />
+                        Import Contributions
+                    </button>
                 </div>
             </div>
 
@@ -709,7 +728,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
           <ImportContributionsModal
               year={selectedYear}
               upaBials={UPA_BIALS}
-              selectedBial={assignedBial ? selectedUpaBial : null}
+              selectedBial={selectedUpaBial}
               onClose={() => setIsImportContributionsModalOpen(false)}
               onImport={handleImportContributions}
           />
