@@ -6,9 +6,16 @@ interface MonthSelectionProps {
   onSelectMonth: (month: string) => void;
   onBack?: () => void;
   onGoToDashboard: () => void;
+  onOpenImportModal: () => void;
 }
 
-export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, onSelectMonth, onBack, onGoToDashboard }) => {
+const UploadIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+    </svg>
+);
+
+export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, onSelectMonth, onBack, onGoToDashboard, onOpenImportModal }) => {
   return (
     <div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
@@ -25,6 +32,14 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
                 </div>
             </div>
             <div className="flex flex-col sm:flex-row flex-shrink-0 gap-2">
+                 <button
+                    onClick={onOpenImportModal}
+                    className="flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all text-sm"
+                    aria-label="Import Contributions from file"
+                >
+                    <UploadIcon className="w-5 h-5" />
+                    <span className="hidden sm:inline">Import Contributions</span>
+                </button>
                 <button
                     onClick={onGoToDashboard}
                     className="flex items-center gap-2 bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all text-sm"

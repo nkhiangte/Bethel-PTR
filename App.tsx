@@ -17,6 +17,8 @@ import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
 import { UserManagement } from './components/UserManagement.tsx';
+import { ImportContributionsModal } from './components/ImportContributionsModal.tsx';
+import { SearchBar } from './components/SearchBar.tsx';
 import * as api from './api.ts';
 import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe, User } from './types.ts';
 
@@ -43,7 +45,7 @@ const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
     </svg>
 );
 
@@ -109,6 +111,8 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isImportContributionsModalOpen, setIsImportContributionsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const clearSelections = useCallback(() => {
     // For Admins, reset everything to the top-level selection (Bial)
@@ -122,6 +126,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         setFamilyForReport(null);
         setView('entry');
         setError(null);
+        setSearchTerm('');
     } else {
         // For restricted users, the "dashboard" is the Month Selection for the chosen year.
         // So we only clear the month and subsequent data, keeping the year selected.
@@ -131,6 +136,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         setFamilyForReport(null);
         setView('entry');
         setError(null);
+        setSearchTerm('');
     }
   }, [isAdmin]);
 
@@ -243,6 +249,16 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
+  const handleImportContributions = async (year: number, month: string, upaBial: string, data: any[]) => {
+    try {
+        const result = await api.importContributions(year, month, upaBial, data);
+        return result;
+    } catch (e: any) {
+        console.error('Failed to import contributions:', e);
+        throw e; // Let the modal handle displaying the error message
+    }
+  };
+
   const handleTitheChange = useCallback(async (familyId: string, category: TitheCategory, value: number) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
     
@@ -329,6 +345,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   
   const handleBackFromTitheTable = useCallback(() => {
     setSelectedMonth(null);
+    setSearchTerm('');
   }, []);
 
   const handleViewFamilyReport = useCallback((family: {id: string, name: string}) => {
@@ -341,11 +358,20 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'decimal' }).format(value);
   };
+  
+  const filteredFamilies = useMemo(() => {
+    if (!searchTerm) {
+        return families;
+    }
+    return families.filter(family =>
+        family.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [families, searchTerm]);
 
   const handleExportBialExcel = () => {
-        if (!selectedYear || !selectedMonth || !selectedUpaBial || families.length === 0) return;
+        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredFamilies.length === 0) return;
 
-        const dataToExport = families.map(family => ({
+        const dataToExport = filteredFamilies.map(family => ({
             'S/N': family.ipSerialNo ?? 'N/A',
             'Chhungkua': family.name,
             'Pathian Ram': family.tithe.pathianRam,
@@ -354,7 +380,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
             'Total': family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung,
         }));
         
-        const totals = families.reduce((acc, f) => {
+        const totals = filteredFamilies.reduce((acc, f) => {
             acc.pathianRam += f.tithe.pathianRam;
             acc.ramthar += f.tithe.ramthar;
             acc.tualchhung += f.tithe.tualchhung;
@@ -381,7 +407,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     };
 
     const handleExportBialPdf = () => {
-        if (!selectedYear || !selectedMonth || !selectedUpaBial || families.length === 0) return;
+        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredFamilies.length === 0) return;
 
         const doc = new jsPDF();
         const title = `${selectedUpaBial.replace('Upa ', '')} Pathian Ram`;
@@ -392,7 +418,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         });
 
         const head = [['S/N', 'Chhungkua', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
-        const body = families.map(f => [
+        const body = filteredFamilies.map(f => [
             f.ipSerialNo ?? 'N/A',
             f.name,
             formatCurrency(f.tithe.pathianRam),
@@ -401,7 +427,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
             formatCurrency(f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung),
         ]);
 
-        const totals = families.reduce((acc, f) => {
+        const totals = filteredFamilies.reduce((acc, f) => {
             acc.pathianRam += f.tithe.pathianRam;
             acc.ramthar += f.tithe.ramthar;
             acc.tualchhung += f.tithe.tualchhung;
@@ -528,6 +554,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         onSelectMonth={setSelectedMonth} 
                         onBack={() => setSelectedYear(null)}
                         onGoToDashboard={clearSelections}
+                        onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
                     />;
         }
     } 
@@ -548,6 +575,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         year={selectedYear} 
                         onSelectMonth={setSelectedMonth} 
                         onGoToDashboard={clearSelections}
+                        onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
                     />;
         }
     }
@@ -581,134 +609,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 </div>
             </div>
 
-            <div className="flex flex-col-reverse md:flex-row gap-6 mb-8 no-print">
+            <div className="flex flex-col-reverse md:flex-row gap-6 mb-4 no-print">
                 <div className="flex-grow">
                     <AddFamilyForm onAddFamily={handleAddFamily} />
                 </div>
-                <div>
-                   <ImportFamilies onImport={handleImportFamilies} />
-                </div>
-            </div>
-
-            <div className="bg-sky-50 rounded-lg shadow-md overflow-hidden border border-slate-200">
-                <TitheTable
-                    families={families}
-                    isLoading={isLoading}
-                    onTitheChange={handleTitheChange}
-                    onRemoveFamily={handleRemoveFamily}
-                    onUpdateFamilyName={handleUpdateFamilyName}
-                    onUpdateIpSerialNo={handleUpdateIpSerialNo}
-                    onOpenTitheModal={handleOpenTitheModal}
-                    onOpenTransferModal={handleOpenTransferModal}
-                    onClearTithe={handleClearTithe}
-                    onViewFamilyReport={handleViewFamilyReport}
-                />
-            </div>
-
-            {familyForModal && (
-                <TitheModal 
-                    family={familyForModal}
-                    onClose={handleCloseTitheModal}
-                    onSave={handleSaveTitheModal}
-                />
-            )}
-            {familyToTransfer && selectedUpaBial && (
-                <TransferFamilyModal
-                    family={familyToTransfer}
-                    upaBials={UPA_BIALS}
-                    currentBial={selectedUpaBial}
-                    onClose={handleCloseTransferModal}
-                    onTransfer={handleTransferFamily}
-                />
-            )}
-        </div>
-    );
-  }
-  
-  const showMonthlyActions = selectedYear && selectedMonth && selectedUpaBial && view === 'entry';
-  const showYearlyActions = selectedYear && selectedUpaBial && !selectedMonth && view === 'entry';
-
-  return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8">
-      <Header onLogoClick={clearSelections} />
-       <main className="mt-8 mb-24">
-        {renderContent()}
-      </main>
-
-      {/* Reports and Exports Section */}
-      {(showMonthlyActions || showYearlyActions) && (
-        <div className="mt-12 p-6 bg-white rounded-lg shadow-md no-print border border-slate-200">
-            <h3 className="text-xl font-bold text-slate-800 mb-4 text-center">Reports & Exports</h3>
-            <div className="flex flex-wrap justify-center items-center gap-4">
-            
-            {/* Yearly report buttons (shown on month selection screen) */}
-            {showYearlyActions && (
-                <>
-                <button
-                    onClick={() => setView('yearlyReport')}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md"
-                >
-                    <ReportIcon className="w-5 h-5" />
-                    <span>Aggregate Yearly Report</span>
-                </button>
-                <button
-                    onClick={() => setView('bialYearlyReport')}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all shadow-md"
-                >
-                    <ReportIcon className="w-5 h-5" />
-                    <span>Bial Yearly Report</span>
-                </button>
-                </>
-            )}
-
-            {/* Monthly actions (shown on tithe entry screen) */}
-            {showMonthlyActions && (
-                <>
-                 {isAdmin && (
-                    <button 
-                        onClick={() => setView('report')} 
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all shadow-md"
-                    >
-                        <ReportIcon className="w-5 h-5" />
-                        <span>Aggregate Monthly Report</span>
-                    </button>
-                )}
-                <button onClick={handleExportBialPdf} className="flex items-center gap-2 bg-red-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-red-700 transition-all">
-                    <PdfIcon className="w-5 h-5" />
-                    <span>Export Monthly PDF</span>
-                </button>
-                <button onClick={handleExportBialExcel} className="flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-green-700 transition-all">
-                    <ExportIcon className="w-5 h-5" />
-                    <span>Export Monthly Excel</span>
-                </button>
-                </>
-            )}
-            </div>
-        </div>
-      )}
-
-      <footer className="mt-12 text-center text-slate-500 text-sm no-print">
-         <div className="flex items-center justify-center gap-4 mb-4">
-             <span>Logged in as: <strong>{user.email}</strong> {user.isAdmin ? '(Admin)' : `(${user.assignedBial})`}</span>
-              {isAdmin && view !== 'userManagement' && (
-                 <button
-                     onClick={() => setView('userManagement')}
-                     className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all"
-                 >
-                    User Management
-                 </button>
-             )}
-             <button
-                 onClick={onLogout}
-                 className="bg-slate-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all"
-             >
-                Logout
-             </button>
-         </div>
-         <p>Champhai Bethel Presbyterian Kohhran App. All rights reserved.</p>
-      </footer>
-    </div>
-  );
-};
-
-export default App;

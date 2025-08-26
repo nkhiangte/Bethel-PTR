@@ -171,6 +171,84 @@ export const importFamilies = async (year: number, upaBial: string, familiesToIm
     return { added: addedCount, skipped: skippedCount };
 };
 
+export const importContributions = async (
+    year: number,
+    month: string,
+    upaBial: string,
+    contributionsToImport: { name: string; ipSerialNo: number | null; tithe: Tithe }[]
+): Promise<{ updated: number; skipped: number; skippedInfo: { name: string, reason: string }[] }> => {
+    const db = getFirebaseDb();
+    const batch = writeBatch(db);
+
+    // 1. Fetch all families for the given upaBial
+    const familiesQuery = query(collection(db, 'families'), where('currentBial', '==', upaBial));
+    const familiesSnapshot = await getDocs(familiesQuery);
+    
+    // 2. Create maps for quick lookup
+    const familiesByName = new Map<string, Family>();
+    const familiesBySerial = new Map<number, Family>();
+    familiesSnapshot.docs.forEach(d => {
+        const family = { id: d.id, ...d.data() } as Family;
+        familiesByName.set(family.name.trim().toLowerCase(), family);
+        if (family.ipSerialNo !== null && family.ipSerialNo !== undefined) {
+            familiesBySerial.set(family.ipSerialNo, family);
+        }
+    });
+
+    let updatedCount = 0;
+    const skippedRecords: { name: string, reason: string }[] = [];
+    const processedNames = new Set<string>();
+
+    // 3. Iterate through imported contribution data
+    for (const record of contributionsToImport) {
+        const trimmedName = record.name.trim();
+        if (!trimmedName || processedNames.has(trimmedName.toLowerCase())) {
+            // Skip empty names or duplicates within the file
+            continue;
+        }
+        processedNames.add(trimmedName.toLowerCase());
+
+        let familyToUpdate: Family | undefined = undefined;
+
+        // 4. Try to find a matching family
+        // First by S/N
+        if (record.ipSerialNo !== null && record.ipSerialNo !== undefined) {
+            familyToUpdate = familiesBySerial.get(record.ipSerialNo);
+        }
+        // If not found by S/N, try by name
+        if (!familyToUpdate) {
+            familyToUpdate = familiesByName.get(trimmedName.toLowerCase());
+        }
+
+        // 5. If a family is found, create/update their titheLog
+        if (familyToUpdate) {
+            const logRef = getTitheLogRef(year, month, familyToUpdate.id);
+            // This is a "set" operation because we are replacing the entire month's data.
+            batch.set(logRef, {
+                year,
+                month,
+                familyId: familyToUpdate.id,
+                upaBial,
+                tithe: record.tithe,
+                lastUpdated: serverTimestamp()
+            });
+            updatedCount++;
+        } else {
+            skippedRecords.push({ name: trimmedName, reason: "Family not found in this Upa Bial." });
+        }
+    }
+
+    if (updatedCount > 0) {
+        await batch.commit();
+    }
+
+    return {
+        updated: updatedCount,
+        skipped: skippedRecords.length,
+        skippedInfo: skippedRecords
+    };
+};
+
 export const updateTithe = async (year: number, month: string, upaBial: string, familyId: string, categoryOrTithe: TitheCategory | Tithe, value?: number): Promise<void> => {
     const db = getFirebaseDb();
     const logRef = getTitheLogRef(year, month, familyId);
