@@ -78,13 +78,14 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
 
                 const headers = (jsonData[0] as any[]).map(h => String(h || '').trim().toLowerCase());
                 const nameIndex = headers.indexOf('chhungkua');
-                const serialIndex = headers.indexOf('s/n');
+                let serialIndex = headers.indexOf('sl.no');
+                if (serialIndex === -1) serialIndex = headers.indexOf('s/n');
                 const ptrIndex = headers.indexOf('pathian ram');
                 const rtIndex = headers.indexOf('ramthar');
                 const tchIndex = headers.indexOf('tualchhung');
 
                 if (nameIndex === -1 || ptrIndex === -1 || rtIndex === -1 || tchIndex === -1) {
-                    throw new Error("Invalid file format. Required columns are missing. Please include: 'Chhungkua', 'Pathian Ram', 'Ramthar', and 'Tualchhung'. 'S/N' is optional.");
+                    throw new Error("Invalid file format. Required columns are missing. Please include: 'Chhungkua', 'Pathian Ram', 'Ramthar', and 'Tualchhung'. 'Sl.No' or 'S/N' is optional.");
                 }
 
                 const importedData: ContributionImportData[] = [];
@@ -200,7 +201,7 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                             <ul className="list-disc list-inside mt-1">
                                 <li>The first row must be a header row.</li>
                                 <li>Required columns: <strong>Chhungkua</strong>, <strong>Pathian Ram</strong>, <strong>Ramthar</strong>, <strong>Tualchhung</strong>.</li>
-                                <li>Optional column: <strong>S/N</strong> (for more accurate matching).</li>
+                                <li>Optional column: <strong>Sl.No</strong> (for more accurate matching). `S/N` is also accepted. Place this in the first column for best results.</li>
                                 <li>Families not found in the database will be <strong>created automatically</strong>.</li>
                             </ul>
                         </div>
