@@ -25,8 +25,8 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
         setError(null);
         setSuccessMessage(null);
         try {
-            // Fix: Use v8 compat createUserWithEmailAndPassword
-            const userCredential = await auth.createUserWithEmailAndPassword(auth, email, password);
+            // Fix: Use v8 compat createUserWithEmailAndPassword, which takes 2 arguments.
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
             await api.createUserDocument(userCredential.user!);
             setSuccessMessage("Registration successful! Please check with your administrator to have your role assigned before logging in.");
         } catch (err: any) {

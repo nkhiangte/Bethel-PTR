@@ -170,7 +170,7 @@ export const importContributions = async (
     month: string,
     upaBial: string,
     contributionsToImport: { name: string; ipSerialNo: number | null; tithe: Tithe }[]
-): Promise<{ updated: number; skipped: number; skippedInfo: { name: string, reason: string }[] }> => {
+): Promise<{ updated: number; created: number; skipped: number; skippedInfo: { name: string, reason: string }[] }> => {
     // Fix: Use v8 compat syntax
     const batch = db.batch();
 
@@ -190,6 +190,7 @@ export const importContributions = async (
     });
 
     let updatedCount = 0;
+    let createdCount = 0;
     const skippedRecords: { name: string, reason: string }[] = [];
     const processedNames = new Set<string>();
 
@@ -197,7 +198,9 @@ export const importContributions = async (
     for (const record of contributionsToImport) {
         const trimmedName = record.name.trim();
         if (!trimmedName || processedNames.has(trimmedName.toLowerCase())) {
-            // Skip empty names or duplicates within the file
+             if (trimmedName && processedNames.has(trimmedName.toLowerCase())) {
+                skippedRecords.push({ name: trimmedName, reason: "Duplicate entry in the import file." });
+            }
             continue;
         }
         processedNames.add(trimmedName.toLowerCase());
@@ -214,7 +217,7 @@ export const importContributions = async (
             familyToUpdate = familiesByName.get(trimmedName.toLowerCase());
         }
 
-        // 5. If a family is found, create/update their titheLog
+        // 5. If a family is found, create/update their titheLog. If not, create them.
         if (familyToUpdate) {
             const logRef = getTitheLogRef(year, month, familyToUpdate.id);
             // This is a "set" operation because we are replacing the entire month's data.
@@ -228,16 +231,39 @@ export const importContributions = async (
             });
             updatedCount++;
         } else {
-            skippedRecords.push({ name: trimmedName, reason: "Family not found in this Upa Bial." });
+            // Family not found - CREATE a new family and their tithe log.
+            const familiesRef = db.collection('families');
+            const newFamilyRef = familiesRef.doc(); // Create a new doc reference with a local ID
+            
+            // Add the new family to the batch
+            batch.set(newFamilyRef, {
+                name: trimmedName,
+                currentBial: upaBial,
+                ipSerialNo: record.ipSerialNo,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+
+            // Add the tithe log for the new family to the batch, using the new local ID
+            const logRef = getTitheLogRef(year, month, newFamilyRef.id);
+            batch.set(logRef, {
+                year,
+                month,
+                familyId: newFamilyRef.id,
+                upaBial,
+                tithe: record.tithe,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            createdCount++;
         }
     }
 
-    if (updatedCount > 0) {
+    if (updatedCount > 0 || createdCount > 0) {
         await batch.commit();
     }
 
     return {
         updated: updatedCount,
+        created: createdCount,
         skipped: skippedRecords.length,
         skippedInfo: skippedRecords
     };

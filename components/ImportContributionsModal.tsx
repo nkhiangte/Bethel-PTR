@@ -16,6 +16,7 @@ interface ContributionImportData {
 
 interface ImportResult {
     updated: number;
+    created: number;
     skipped: number;
     skippedInfo: { name:string, reason:string }[];
 }
@@ -200,7 +201,7 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                                 <li>The first row must be a header row.</li>
                                 <li>Required columns: <strong>Chhungkua</strong>, <strong>Pathian Ram</strong>, <strong>Ramthar</strong>, <strong>Tualchhung</strong>.</li>
                                 <li>Optional column: <strong>S/N</strong> (for more accurate matching).</li>
-                                <li>Families not found in the selected Upa Bial will be skipped.</li>
+                                <li>Families not found in the database will be <strong>created automatically</strong>.</li>
                             </ul>
                         </div>
                     </div>
@@ -210,11 +211,12 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                     {result && (
                         <div className="bg-green-100 text-green-800 p-4 rounded-lg">
                             <h3 className="font-bold">Import Complete!</h3>
-                            <p>{result.updated} families' contributions were successfully updated.</p>
-                            {result.skipped > 0 && <p>{result.skipped} families were skipped.</p>}
+                            {result.updated > 0 && <p>{result.updated} existing families' contributions were updated.</p>}
+                            {result.created > 0 && <p>{result.created} new families were created with their contributions.</p>}
+                            {result.skipped > 0 && <p>{result.skipped} records were skipped.</p>}
                              {result.skippedInfo.length > 0 && (
                                 <details className="mt-2 text-sm">
-                                    <summary className="cursor-pointer font-semibold">Show skipped families</summary>
+                                    <summary className="cursor-pointer font-semibold">Show skipped records</summary>
                                     <ul className="list-disc list-inside mt-1 pl-2 max-h-32 overflow-y-auto">
                                         {result.skippedInfo.map((s, i) => <li key={i}><strong>{s.name}</strong>: {s.reason}</li>)}
                                     </ul>
