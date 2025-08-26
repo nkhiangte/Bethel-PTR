@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
+// Fix: Use scoped firebase package for auth imports to resolve module export errors.
+import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from '@firebase/auth';
 import { getFirebaseAuth } from './firebase';
 import * as api from './api.ts';
 import type { User } from './types';

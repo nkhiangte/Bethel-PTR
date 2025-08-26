@@ -45,7 +45,7 @@ const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
     </svg>
 );
 
@@ -613,3 +613,138 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 <div className="flex-grow">
                     <AddFamilyForm onAddFamily={handleAddFamily} />
                 </div>
+                 <div className="flex-shrink-0">
+                    <ImportFamilies onImport={handleImportFamilies} />
+                </div>
+            </div>
+
+            {families.length > 0 && (
+                <div className="mb-4 no-print">
+                    <SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
+                </div>
+            )}
+
+            <TitheTable
+                families={filteredFamilies}
+                isLoading={isLoading}
+                onTitheChange={handleTitheChange}
+                onRemoveFamily={handleRemoveFamily}
+                onUpdateFamilyName={handleUpdateFamilyName}
+                onUpdateIpSerialNo={handleUpdateIpSerialNo}
+                onOpenTitheModal={handleOpenTitheModal}
+                onOpenTransferModal={handleOpenTransferModal}
+                onClearTithe={handleClearTithe}
+                onViewFamilyReport={handleViewFamilyReport}
+            />
+
+            {filteredFamilies.length > 0 && (
+                <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4 no-print">
+                    <span className="text-slate-600 text-sm">Export current view:</span>
+                    <button
+                        onClick={handleExportBialExcel}
+                        className="flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                    >
+                        <ExportIcon className="w-5 h-5" /> Excel
+                    </button>
+                    <button
+                        onClick={handleExportBialPdf}
+                        className="flex items-center gap-2 bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                    >
+                        <PdfIcon className="w-5 h-5" /> PDF
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+  };
+
+  return (
+    <div className="container mx-auto p-4 sm:p-6 md:p-8">
+      <Header onLogoClick={clearSelections} />
+      
+      <main className="mt-8 mb-24">
+        <div className="flex flex-wrap justify-end gap-4 mb-6 no-print">
+            {isAdmin && view === 'entry' && (
+                <button
+                    onClick={() => setView('userManagement')}
+                    className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all text-sm"
+                >
+                    Manage Users
+                </button>
+            )}
+            {view === 'entry' && selectedYear && (
+                 <div className="flex gap-2">
+                     {isAdmin && (
+                        <button
+                            onClick={() => setView('yearlyReport')}
+                            className="flex items-center gap-2 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all text-sm"
+                        >
+                            <ReportIcon className="w-5 h-5" /> Yearly Aggregate
+                        </button>
+                     )}
+                    {isAdmin && selectedMonth && (
+                        <button
+                            onClick={() => setView('report')}
+                            className="flex items-center gap-2 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all text-sm"
+                        >
+                           <ReportIcon className="w-5 h-5" /> Monthly Aggregate
+                        </button>
+                    )}
+                     {!isAdmin && selectedYear && selectedUpaBial && (
+                        <button
+                            onClick={() => setView('bialYearlyReport')}
+                            className="flex items-center gap-2 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all text-sm"
+                        >
+                            <ReportIcon className="w-5 h-5" /> View Yearly Report
+                        </button>
+                     )}
+                 </div>
+            )}
+        </div>
+
+        {renderContent()}
+      </main>
+
+      {isImportContributionsModalOpen && selectedYear && (
+          <ImportContributionsModal
+              year={selectedYear}
+              upaBials={UPA_BIALS}
+              selectedBial={assignedBial ? selectedUpaBial : null}
+              onClose={() => setIsImportContributionsModalOpen(false)}
+              onImport={handleImportContributions}
+          />
+      )}
+      {familyForModal && (
+          <TitheModal 
+              family={familyForModal} 
+              onClose={handleCloseTitheModal} 
+              onSave={handleSaveTitheModal} 
+          />
+      )}
+      {familyToTransfer && selectedUpaBial && (
+          <TransferFamilyModal
+              family={familyToTransfer}
+              upaBials={UPA_BIALS}
+              currentBial={selectedUpaBial}
+              onClose={handleCloseTransferModal}
+              onTransfer={handleTransferFamily}
+          />
+      )}
+
+      <footer className="mt-12 text-center text-slate-500 text-sm no-print">
+         <div className="flex items-center justify-center gap-4 mb-4">
+             <span>Logged in as: <strong>{user.email}</strong> {isAdmin ? '(Admin)' : `(${assignedBial})`}</span>
+             <button
+                 onClick={onLogout}
+                 className="bg-slate-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all"
+             >
+                Logout
+             </button>
+         </div>
+         <p>Champhai Bethel Presbyterian Kohhran App. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+};
+
+export default App;

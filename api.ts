@@ -1,4 +1,5 @@
 import { getFirebaseDb } from './firebase.ts';
+// Fix: Use scoped firebase package for firestore imports to resolve module export errors.
 import { 
     collection,
     query,
@@ -14,8 +15,9 @@ import {
     runTransaction,
     setDoc,
     orderBy,
-} from 'firebase/firestore';
-import type { User as FirebaseUser } from 'firebase/auth';
+} from '@firebase/firestore';
+// Fix: Use scoped firebase package for auth imports to resolve module export errors.
+import type { User as FirebaseUser } from '@firebase/auth';
 import type { Family, Tithe, TitheCategory, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe, UserDoc } from './types.ts';
 
 const MONTHS = [
@@ -32,11 +34,12 @@ export const createUserDocument = async (user: FirebaseUser): Promise<void> => {
 
     // Create a document only if it doesn't already exist
     if (!userDoc.exists()) {
+        const isAdmin = user.email === 'nkhiangte@gmail.com';
         await setDoc(userRef, {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName || user.email?.split('@')[0],
-            isAdmin: false,       // Default role: not an admin
+            isAdmin: isAdmin,       // Default role: not an admin, unless it's the specified email
             assignedBial: null, // Default role: no bial assigned
             createdAt: serverTimestamp(),
         });

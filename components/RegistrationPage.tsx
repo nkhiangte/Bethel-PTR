@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+// Fix: Use scoped firebase package for auth imports to resolve module export errors.
+import { createUserWithEmailAndPassword } from '@firebase/auth';
 import { getFirebaseAuth } from '../firebase';
 import * as api from '../api.ts';
 

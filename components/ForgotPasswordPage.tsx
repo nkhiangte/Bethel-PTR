@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { sendPasswordResetEmail } from 'firebase/auth';
+// Fix: Use scoped firebase package for auth imports to resolve module export errors.
+import { sendPasswordResetEmail } from '@firebase/auth';
 import { getFirebaseAuth } from '../firebase';
 
 interface ForgotPasswordPageProps {

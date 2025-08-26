@@ -1,6 +1,9 @@
-import { initializeApp, getApps, getApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
-import { getAuth as firebaseGetAuth, Auth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore as firebaseGetFirestore, Firestore } from 'firebase/firestore';
+// Fix: Use scoped firebase package for app imports to resolve module export errors.
+import { initializeApp, getApps, getApp, type FirebaseApp, type FirebaseOptions } from '@firebase/app';
+// Fix: Use scoped firebase package for auth imports to resolve module export errors.
+import { getAuth as firebaseGetAuth, Auth, GoogleAuthProvider } from '@firebase/auth';
+// Fix: Use scoped firebase package for firestore imports to resolve module export errors.
+import { getFirestore as firebaseGetFirestore, Firestore } from '@firebase/firestore';
 
 // --- IMPORTANT ---
 // Replace these placeholder values with your actual Firebase project configuration.
