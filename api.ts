@@ -14,7 +14,7 @@ const MONTHS = [
 
 // --- USER MANAGEMENT API ---
 
-export const createUserDocument = async (user: FirebaseUser): Promise<void> => {
+export const createUserDocument = async (user: FirebaseUser, additionalData?: { displayName: string, assignedBial: string | null }): Promise<void> => {
     // Fix: Use v8 compat syntax
     const userRef = db.collection('users').doc(user.uid);
     const userDoc = await userRef.get();
@@ -26,9 +26,9 @@ export const createUserDocument = async (user: FirebaseUser): Promise<void> => {
         await userRef.set({
             uid: user.uid,
             email: user.email,
-            displayName: user.displayName || user.email?.split('@')[0],
+            displayName: additionalData?.displayName || user.displayName || user.email?.split('@')[0],
             isAdmin: isAdmin,       // Default role: not an admin, unless it's the specified email
-            assignedBial: null, // Default role: no bial assigned
+            assignedBial: isAdmin ? null : (additionalData?.assignedBial || null), // Default role: no bial assigned
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
     }

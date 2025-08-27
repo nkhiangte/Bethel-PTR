@@ -7,8 +7,12 @@ interface RegistrationPageProps {
     onSwitchToLogin: () => void;
 }
 
+const UPA_BIALS = Array.from({ length: 13 }, (_, i) => `Upa Bial ${i + 1}`);
+
 export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLogin }) => {
     const [email, setEmail] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [assignedBial, setAssignedBial] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -21,13 +25,32 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
             setError("Passwords do not match.");
             return;
         }
+        if (!firstName.trim()) {
+            setError("First Name is required.");
+            return;
+        }
         setIsLoading(true);
         setError(null);
         setSuccessMessage(null);
         try {
             // Fix: Use v8 compat createUserWithEmailAndPassword, which takes 2 arguments.
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-            await api.createUserDocument(userCredential.user!);
+            
+            if (userCredential.user) {
+                // Update Firebase Auth profile displayName
+                await userCredential.user.updateProfile({
+                    displayName: firstName.trim()
+                });
+
+                // Create Firestore document with extra details
+                await api.createUserDocument(userCredential.user, { 
+                    displayName: firstName.trim(), 
+                    assignedBial: assignedBial || null 
+                });
+            } else {
+                throw new Error("User creation was not successful. Please try again.");
+            }
+
             setSuccessMessage("Registration successful! Please check with your administrator to have your role assigned before logging in.");
         } catch (err: any) {
             let errorMessage = err.message || "Failed to register. Please try again.";
@@ -61,6 +84,17 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
                             required
                         />
                     </div>
+                     <div>
+                        <label htmlFor="firstName-register" className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
+                        <input
+                            id="firstName-register"
+                            type="text"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                            required
+                        />
+                    </div>
                     <div>
                         <label htmlFor="password-register" className="block text-sm font-medium text-slate-700 mb-2">Password</label>
                         <input
@@ -82,6 +116,20 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
                             className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
                             required
                         />
+                    </div>
+                    <div>
+                        <label htmlFor="upa-bial-register" className="block text-sm font-medium text-slate-700 mb-2">Upa Bial (Optional)</label>
+                        <select
+                            id="upa-bial-register"
+                            value={assignedBial}
+                            onChange={(e) => setAssignedBial(e.target.value)}
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                        >
+                            <option value="">-- Select Upa Bial --</option>
+                            {UPA_BIALS.map(bial => (
+                                <option key={bial} value={bial}>{bial}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <button type="submit" disabled={isLoading} className="w-full bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400">
