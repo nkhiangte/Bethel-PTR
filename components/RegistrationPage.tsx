@@ -7,7 +7,11 @@ interface RegistrationPageProps {
     onSwitchToLogin: () => void;
 }
 
-const UPA_BIALS = Array.from({ length: 13 }, (_, i) => `Upa Bial ${i + 1}`);
+const UPA_BIALS = [
+  "Upa Bial 1", "Upa Bial 2", "Upa Bial 3", "Upa Bial 4", "Upa Bial 5", 
+  "Upa Bial 6", "Upa Bial 7", "Upa Bial 8", "Upa Bial 9", "Upa Bial 10", 
+  "Upa Bial 10-b", "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
+];
 
 export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLogin }) => {
     const [email, setEmail] = useState('');

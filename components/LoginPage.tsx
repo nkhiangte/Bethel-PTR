@@ -1,23 +1,11 @@
 import React, { useState } from 'react';
 // Fix: Removed v9 modular imports. v8 compat functions are called on auth object.
-import { auth, googleProvider } from '../firebase.ts';
-import * as api from '../api.ts';
-
+import { auth } from '../firebase.ts';
 
 interface LoginPageProps {
     onSwitchToRegister: () => void;
     onSwitchToForgotPassword: () => void;
 }
-
-const GoogleIcon: React.FC = () => (
-    <svg className="w-5 h-5" viewBox="0 0 48 48">
-        <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-        <path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 3.02-2.31 5.45-4.82 7.18l7.98 6.19c4.56-4.21 7.32-10.44 7.32-17.33z"></path>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-        <path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.82l-7.98-6.19c-2.11 1.45-4.82 2.3-7.91 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-        <path fill="none" d="M0 0h48v48H0z"></path>
-    </svg>
-);
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
     const [email, setEmail] = useState('');
@@ -39,28 +27,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwit
         }
     };
     
-    const handleGoogleSignIn = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            // Fix: Use v8 compat signInWithPopup
-            const result = await auth.signInWithPopup(googleProvider);
-            // Fix: Use v8 compat additionalUserInfo from result object
-            const additionalInfo = result.additionalUserInfo;
-            if (additionalInfo?.isNewUser) {
-                await api.createUserDocument(result.user!);
-            }
-        } catch (err: any) {
-             let errorMessage = err.message || "Failed to sign in with Google.";
-             if (err.code === 'permission-denied' || (err.message && err.message.toLowerCase().includes('permission denied'))) {
-                errorMessage = "Sign-in failed because your user profile could not be created in the database. Please contact the administrator.";
-             }
-             setError(errorMessage);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     return (
         <div className="min-h-screen flex items-center justify-center bg-sky-100 p-4">
             <div className="w-full max-w-md bg-sky-50 shadow-2xl rounded-2xl p-8">
@@ -103,27 +69,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwit
                         </button>
                     </div>
                 </form>
-
-                 <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                        <div className="w-full border-t border-slate-300" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-sky-50 text-slate-500">OR</span>
-                    </div>
-                </div>
-
-                <div>
-                    <button
-                        type="button"
-                        onClick={handleGoogleSignIn}
-                        disabled={isLoading}
-                        className="w-full flex justify-center items-center gap-3 bg-white text-slate-700 font-semibold px-6 py-3 rounded-lg border border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-sm disabled:bg-slate-100 disabled:cursor-not-allowed"
-                    >
-                        <GoogleIcon />
-                        <span>Sign in with Google</span>
-                    </button>
-                </div>
 
                 <p className="text-center text-sm text-slate-500 mt-8">
                     Don't have an account?{' '}

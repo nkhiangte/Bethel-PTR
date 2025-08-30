@@ -39,4 +39,3 @@ if (!firebase.apps.length) {
 // Fix: Use v8 compat service getters
 export const auth = firebase.auth();
 export const db = firebase.firestore();
-export const googleProvider = new firebase.auth.GoogleAuthProvider();
