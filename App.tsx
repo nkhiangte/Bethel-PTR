@@ -19,6 +19,7 @@ import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx'
 import { UserManagement } from './components/UserManagement.tsx';
 import { ImportContributionsModal } from './components/ImportContributionsModal.tsx';
 import { SearchBar } from './components/SearchBar.tsx';
+import { InstallPWAButton } from './components/InstallPWAButton.tsx';
 import * as api from './api.ts';
 import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe, User } from './types.ts';
 
@@ -751,7 +752,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
       )}
 
       <footer className="mt-12 text-center text-slate-500 text-sm no-print">
-         <div className="flex items-center justify-center gap-4 mb-4">
+         <div className="flex items-center justify-center flex-wrap gap-4 mb-4">
              <span>Logged in as: <strong>{user.email}</strong> {isAdmin ? '(Admin)' : `(${assignedBial})`}</span>
              <button
                  onClick={onLogout}
@@ -759,6 +760,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
              >
                 Logout
              </button>
+             <InstallPWAButton />
          </div>
          <p>Champhai Bethel Presbyterian Kohhran App. All rights reserved.</p>
       </footer>
