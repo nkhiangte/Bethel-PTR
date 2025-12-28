@@ -60,6 +60,15 @@ export const fetchUserDocument = async (uid: string): Promise<UserDoc | null> =>
     return null;
 };
 
+/**
+ * Removes a user's document from the Firestore 'users' collection.
+ * Note: This does not delete the user from Firebase Authentication, 
+ * but it revokes their access to the app since access depends on the Firestore document.
+ */
+export const deleteUserDocument = async (uid: string): Promise<void> => {
+    await db.collection('users').doc(uid).delete();
+};
+
 
 // --- TITHE & FAMILY API ---
 
@@ -189,8 +198,7 @@ export const importContributions = async (
         }
     });
 
-    let updatedCount = 0;
-    let createdCount = 0;
+    let updatedCount = 0;    let createdCount = 0;
     const skippedRecords: { name: string, reason: string }[] = [];
     const processedNames = new Set<string>();
 

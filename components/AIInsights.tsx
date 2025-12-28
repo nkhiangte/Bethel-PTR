@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import type { AggregateReportData } from '../types.ts';
@@ -32,6 +33,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, pe
         setInsights(null);
 
         try {
+            // Fix: Initialize GoogleGenAI with apiKey property
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             const systemInstruction = "You are a friendly and encouraging church financial analyst. Your role is to analyze tithe data and provide a positive summary for church leaders and members. Your tone should be optimistic and appreciative. Format your response using simple markdown with bolding for emphasis on key figures, names, or categories, and use newlines for paragraphs. Do not use markdown headings (#).";
@@ -54,14 +56,16 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ reportData, upaBials, pe
                 3. Write an encouraging and appreciative message to the congregation about their faithfulness and generosity.
             `;
 
+            // Fix: Use ai.models.generateContent with model name and contents, update to gemini-3-flash-preview
             const response: GenerateContentResponse = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-3-flash-preview',
                 contents: prompt,
                 config: {
                     systemInstruction: systemInstruction,
                 },
             });
             
+            // Fix: response.text is a property, not a method
             const text = response.text;
             setInsights(text);
 

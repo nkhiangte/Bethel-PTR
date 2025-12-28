@@ -39,6 +39,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, upa
         ));
     };
 
+    const handleRemoveUser = (uid: string) => {
+        setUsers(currentUsers => currentUsers.filter(u => u.uid !== uid));
+    };
+
     if (isLoading) {
         return <LoadingSpinner message="Loading User Data..." />;
     }
@@ -100,6 +104,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, upa
                                     currentUser={currentUser}
                                     upaBials={upaBials}
                                     onRoleUpdate={handleRoleUpdate}
+                                    onUserRemove={handleRemoveUser}
                                 />
                             ))}
                          </tbody>

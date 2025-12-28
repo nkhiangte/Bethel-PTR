@@ -10,7 +10,7 @@ interface RegistrationPageProps {
 const UPA_BIALS = [
   "Upa Bial 1", "Upa Bial 2", "Upa Bial 3", "Upa Bial 4", "Upa Bial 5", 
   "Upa Bial 6", "Upa Bial 7", "Upa Bial 8", "Upa Bial 9", "Upa Bial 10", 
-  "Upa Bial 10-b", "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
+  "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
 ];
 
 export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLogin }) => {
@@ -25,14 +25,24 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!firstName.trim()) {
+            setError("Hming (Full Name) hman a ngai.");
+            return;
+        }
+        if (!assignedBial) {
+            setError("Upa Bial thlan ngei a ngai.");
+            return;
+        }
         if (password !== confirmPassword) {
             setError("Passwords do not match.");
             return;
         }
-        if (!firstName.trim()) {
-            setError("First Name is required.");
+        if (password.length < 6) {
+            setError("Password hi character 6 aia tlem lo a ni tur a ni.");
             return;
         }
+
         setIsLoading(true);
         setError(null);
         setSuccessMessage(null);
@@ -71,63 +81,36 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
         <div className="min-h-screen flex items-center justify-center bg-sky-100 p-4">
             <div className="w-full max-w-md bg-sky-50 shadow-2xl rounded-2xl p-8">
                 <h1 className="text-3xl font-bold text-slate-900 text-center mb-2">Create Account</h1>
-                <p className="text-slate-600 text-center mb-8">Get started with your new account.</p>
+                <p className="text-slate-600 text-center mb-8">Register to start managing tithes.</p>
 
                 {error && <p className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-center">{error}</p>}
                 {successMessage && <p className="bg-green-100 text-green-700 p-3 rounded-lg mb-4 text-center">{successMessage}</p>}
 
-                <form onSubmit={handleRegister} className="space-y-6">
+                <form onSubmit={handleRegister} className="space-y-4">
                     <div>
-                        <label htmlFor="email-register" className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                        <input
-                            id="email-register"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
-                            required
-                        />
-                    </div>
-                     <div>
-                        <label htmlFor="firstName-register" className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
+                        <label htmlFor="firstName-register" className="block text-sm font-semibold text-slate-700 mb-1">
+                            Hming (Full Name) <span className="text-red-500">*</span>
+                        </label>
                         <input
                             id="firstName-register"
                             type="text"
                             value={firstName}
                             onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="I hming ziak rawh"
                             className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
                             required
                         />
                     </div>
                     <div>
-                        <label htmlFor="password-register" className="block text-sm font-medium text-slate-700 mb-2">Password</label>
-                        <input
-                            id="password-register"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                             className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="confirm-password" className="block text-sm font-medium text-slate-700 mb-2">Confirm Password</label>
-                        <input
-                            id="confirm-password"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="upa-bial-register" className="block text-sm font-medium text-slate-700 mb-2">Upa Bial (Optional)</label>
+                        <label htmlFor="upa-bial-register" className="block text-sm font-semibold text-slate-700 mb-1">
+                            Upa Bial <span className="text-red-500">*</span>
+                        </label>
                         <select
                             id="upa-bial-register"
                             value={assignedBial}
                             onChange={(e) => setAssignedBial(e.target.value)}
                             className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                            required
                         >
                             <option value="">-- Select Upa Bial --</option>
                             {UPA_BIALS.map(bial => (
@@ -136,8 +119,50 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
                         </select>
                     </div>
                     <div>
-                        <button type="submit" disabled={isLoading} className="w-full bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400">
-                            {isLoading ? 'Registering...' : 'Register'}
+                        <label htmlFor="email-register" className="block text-sm font-semibold text-slate-700 mb-1">
+                            Email Address <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            id="email-register"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="example@gmail.com"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                            required
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="password-register" className="block text-sm font-semibold text-slate-700 mb-1">
+                                Password <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="password-register"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="confirm-password" className="block text-sm font-semibold text-slate-700 mb-1">
+                                Confirm <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="confirm-password"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div className="pt-4">
+                        <button type="submit" disabled={isLoading} className="w-full bg-amber-600 text-white font-bold px-6 py-4 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400">
+                            {isLoading ? 'Registering...' : 'Register Now'}
                         </button>
                     </div>
                 </form>

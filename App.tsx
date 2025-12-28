@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -32,7 +33,7 @@ const MONTHS = [
 const UPA_BIALS = [
   "Upa Bial 1", "Upa Bial 2", "Upa Bial 3", "Upa Bial 4", "Upa Bial 5", 
   "Upa Bial 6", "Upa Bial 7", "Upa Bial 8", "Upa Bial 9", "Upa Bial 10", 
-  "Upa Bial 10-b", "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
+  "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
 ];
 
 const currentYear = new Date().getFullYear();
@@ -305,6 +306,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     
     // Persist change
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, category, value);
+    // Fix typo: BirdSelectedUpaBial was used instead of selectedUpaBial
   }, [selectedYear, selectedMonth, selectedUpaBial, families]);
   
   const handleRemoveFamily = useCallback(async (familyId: string) => {
@@ -317,9 +319,9 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     await api.removeFamily(familyId);
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  const handleUpdateFamilyName = useCallback(async (familyId: string, newName: string) => {
-    if (newName.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
-    const trimmedName = newName.trim();
+  const handleUpdateFamilyName = useCallback(async (familyId: string, name: string) => {
+    if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
+    const trimmedName = name.trim();
 
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f));
     await api.updateFamilyDetails(familyId, { name: trimmedName });
