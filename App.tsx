@@ -17,11 +17,12 @@ import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
 import { UserManagement } from './components/UserManagement.tsx';
+import { BialManagement } from './components/BialManagement.tsx';
 import { ImportContributionsModal } from './components/ImportContributionsModal.tsx';
 import { SearchBar } from './components/SearchBar.tsx';
 import { InstallPWAButton } from './components/InstallPWAButton.tsx';
 import * as api from './api.ts';
-import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe, User } from './types.ts';
+import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe, User, BialInfo } from './types.ts';
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -114,11 +115,12 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [families, setFamilies] = useState<FamilyWithTithe[]>([]);
   const [monthlyReportData, setMonthlyReportData] = useState<AggregateReportData | null>(null);
   const [yearlyReportData, setYearlyReportData] = useState<AggregateReportData | null>(null);
+  const [currentBialInfo, setCurrentBialInfo] = useState<BialInfo | null>(null);
   
   const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
   const [familyToTransfer, setFamilyToTransfer] = useState<FamilyWithTithe | null>(null);
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement'>('entry');
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'bialManagement'>('entry');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +137,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         setMonthlyReportData(null);
         setYearlyReportData(null);
         setFamilyForReport(null);
+        setCurrentBialInfo(null);
         setView('entry');
         setError(null);
         setSearchTerm('');
@@ -180,6 +183,19 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         setFamilies([]);
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
+
+  // Effect to fetch Bial Overseer info
+  useEffect(() => {
+    if (selectedUpaBial) {
+      const fetchInfo = async () => {
+        const info = await api.fetchBialInfo(selectedUpaBial);
+        setCurrentBialInfo(info);
+      };
+      fetchInfo();
+    } else {
+      setCurrentBialInfo(null);
+    }
+  }, [selectedUpaBial]);
   
   // Effect to fetch monthly report data when view changes
   useEffect(() => {
@@ -387,6 +403,18 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const handleExportBialExcel = () => {
         if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredFamilies.length === 0) return;
 
+        const headerData = [
+            [`${selectedUpaBial} Pathian Ram Thawhlawm`],
+            [`${selectedMonth} ${selectedYear}`],
+        ];
+        if (currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0) {
+            const vawngtuNames = currentBialInfo.vawngtu.map(v => v.name).join(', ');
+            headerData.push([`Bial Vawngtu: ${vawngtuNames}`]);
+        }
+        headerData.push([]); // Blank row for spacing
+
+        const worksheet = utils.aoa_to_sheet(headerData);
+
         const dataToExport = filteredFamilies.map(family => ({
             'S/N': family.ipSerialNo ?? 'N/A',
             'Chhungkua': family.name,
@@ -413,7 +441,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
             'Total': totals.total,
         };
         
-        const worksheet = utils.json_to_sheet(dataToExport);
+        utils.sheet_add_json(worksheet, dataToExport, { origin: -1, skipHeader: false });
         utils.sheet_add_json(worksheet, [footer], { skipHeader: true, origin: -1 });
 
         const workbook = utils.book_new();
@@ -426,7 +454,10 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredFamilies.length === 0) return;
 
         const doc = new jsPDF();
-        const title = `${selectedUpaBial.replace('Upa ', '')} Pathian Ram`;
+        const vawngtuText = (currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0)
+            ? ` (Vawngtu: ${currentBialInfo.vawngtu.map(v => v.name).join(', ')})`
+            : '';
+        const title = `${selectedUpaBial.replace('Upa ', '')} Pathian Ram${vawngtuText}`;
         autoTable(doc, {
             body: [[title], [`${selectedMonth} ${selectedYear}`]],
             theme: 'plain',
@@ -546,6 +577,14 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                     onGoToDashboard={clearSelections}
                 />
     }
+    
+    if (view === 'bialManagement') {
+        return <BialManagement
+                    upaBials={UPA_BIALS}
+                    onBack={() => setView('entry')}
+                    onGoToDashboard={clearSelections}
+                />
+    }
 
     // Admin Flow
     if (isAdmin) {
@@ -611,7 +650,10 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         <h3 className="text-xl font-bold text-slate-800">
                             {selectedUpaBial} &ndash; {selectedMonth} {selectedYear}
                         </h3>
-                        <p className="text-slate-600">A hnuai ah hian chhungkaw tin te thawhlawm chhunglut rawh le.</p>
+                        {currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0 && (
+                            <p className="text-slate-600">Bial Vawngtu: <strong>{currentBialInfo.vawngtu.map(v => v.name).join(', ')}</strong></p>
+                        )}
+                        <p className="text-slate-600 mt-1">A hnuai ah hian chhungkaw tin te thawhlawm chhunglut rawh le.</p>
                     </div>
                     <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
                         <button
@@ -689,12 +731,20 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
       <main className="mt-8 mb-24">
         <div className="flex flex-wrap justify-end gap-4 mb-6 no-print">
             {isAdmin && view === 'entry' && (
-                <button
-                    onClick={() => setView('userManagement')}
-                    className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all text-sm"
-                >
-                    Manage Users
-                </button>
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => setView('bialManagement')}
+                        className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all text-sm"
+                    >
+                        Manage Bial Vawngtu
+                    </button>
+                    <button
+                        onClick={() => setView('userManagement')}
+                        className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all text-sm"
+                    >
+                        Manage Users
+                    </button>
+                </div>
             )}
             {view === 'entry' && selectedYear && (
                  <div className="flex gap-2">

@@ -1,10 +1,12 @@
 
 
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { AggregateReportData } from '../types.ts';
+// Fix: Import BialTotal type to correctly type aggregated data.
+import type { AggregateReportData, BialTotal } from '../types.ts';
 import { AIInsights } from './AIInsights.tsx';
 
 interface AggregateReportProps {
@@ -64,7 +66,8 @@ export const AggregateReport: React.FC<AggregateReportProps> = ({ data, upaBials
 
     const grandTotals = useMemo(() => {
         const totals = { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 };
-        Object.values(data).forEach(bialData => {
+        // Fix: Explicitly type bialData to avoid 'unknown' type error.
+        Object.values(data).forEach((bialData: BialTotal) => {
             totals.pathianRam += bialData.pathianRam;
             totals.ramthar += bialData.ramthar;
             totals.tualchhung += bialData.tualchhung;

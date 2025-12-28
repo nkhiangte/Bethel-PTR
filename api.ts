@@ -2,7 +2,7 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import { db } from './firebase.ts';
-import type { Family, Tithe, TitheCategory, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe, UserDoc } from './types.ts';
+import type { Family, Tithe, TitheCategory, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe, UserDoc, BialInfo } from './types.ts';
 
 // Fix: Use firebase.User for FirebaseUser type
 type FirebaseUser = firebase.User;
@@ -452,4 +452,49 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
     
     // Sort by S/N
     return reportData.sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
+};
+
+
+// --- BIAL MANAGEMENT API ---
+
+const convertToNewBialInfo = (docData: any): BialInfo => {
+    // Handle legacy single overseer format
+    if (docData && docData.overseerName !== undefined) {
+        return {
+            vawngtu: [{
+                name: docData.overseerName,
+                phone: docData.overseerPhone || ''
+            }]
+        };
+    }
+    // Handle documents that have the new field but it might not be an array
+    if (docData && Array.isArray(docData.vawngtu)) {
+        return docData as BialInfo;
+    }
+    // Default to an empty array for new or malformed documents
+    return { vawngtu: [] };
+};
+
+export const updateBialInfo = async (upaBial: string, data: BialInfo): Promise<void> => {
+    const bialRef = db.collection('bialInfo').doc(upaBial);
+    // Overwrite the document with the new structure. This also handles removing old fields.
+    await bialRef.set({ ...data, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() });
+};
+
+export const fetchAllBialInfo = async (): Promise<Map<string, BialInfo>> => {
+    const infoMap = new Map<string, BialInfo>();
+    const snapshot = await db.collection('bialInfo').get();
+    snapshot.forEach(doc => {
+        infoMap.set(doc.id, convertToNewBialInfo(doc.data()));
+    });
+    return infoMap;
+};
+
+export const fetchBialInfo = async (upaBial: string): Promise<BialInfo | null> => {
+    const docRef = db.collection('bialInfo').doc(upaBial);
+    const docSnap = await docRef.get();
+    if (docSnap.exists) {
+        return convertToNewBialInfo(docSnap.data());
+    }
+    return null;
 };

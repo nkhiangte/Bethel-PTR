@@ -68,3 +68,13 @@ export interface FamilyYearlyTitheData {
 export interface YearlyFamilyTotal extends Omit<Family, 'currentBial'> {
     tithe: Tithe;
 }
+
+// For Bial Vawngtu information
+export interface BialVawngtu {
+  name: string;
+  phone: string;
+}
+
+export interface BialInfo {
+  vawngtu: BialVawngtu[];
+}

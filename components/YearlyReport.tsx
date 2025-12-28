@@ -1,10 +1,12 @@
 
 
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { AggregateReportData } from '../types.ts';
+// Fix: Import BialTotal type to correctly type aggregated data.
+import type { AggregateReportData, BialTotal } from '../types.ts';
 import { AIInsights } from './AIInsights.tsx';
 
 interface YearlyReportProps {
@@ -34,7 +36,7 @@ const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
     </svg>
 );
 
@@ -63,7 +65,8 @@ export const YearlyReport: React.FC<YearlyReportProps> = ({ data, upaBials, year
 
     const grandTotals = useMemo(() => {
         const totals = { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 };
-        Object.values(data).forEach(bialData => {
+        // Fix: Explicitly type bialData to avoid 'unknown' type error.
+        Object.values(data).forEach((bialData: BialTotal) => {
             totals.pathianRam += bialData.pathianRam;
             totals.ramthar += bialData.ramthar;
             totals.tualchhung += bialData.tualchhung;

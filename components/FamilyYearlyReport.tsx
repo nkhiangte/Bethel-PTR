@@ -75,7 +75,8 @@ export const FamilyYearlyReport: React.FC<FamilyYearlyReportProps> = ({ familyId
         const acc = { pathianRam: 0, ramthar: 0, tualchhung: 0, grandTotal: 0 };
         if (!reportData) return acc;
 
-        Object.values(reportData).forEach(tithe => {
+        // Fix: Explicitly type 'tithe' to avoid 'unknown' type error.
+        Object.values(reportData).forEach((tithe: Tithe) => {
             acc.pathianRam += tithe.pathianRam;
             acc.ramthar += tithe.ramthar;
             acc.tualchhung += tithe.tualchhung;
