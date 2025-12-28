@@ -1,5 +1,4 @@
 
-
 import React, { useMemo } from 'react';
 import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 import { TitheRow } from './TitheRow.tsx';
@@ -35,17 +34,29 @@ export const TitheTable: React.FC<TitheTableProps> = ({
     onViewFamilyReport
 }) => {
     
-  const totals = useMemo(() => {
-    return families.reduce(
-      (acc, family) => {
-        acc.pathianRam += family.tithe.pathianRam;
-        acc.ramthar += family.tithe.ramthar;
-        acc.tualchhung += family.tithe.tualchhung;
-        acc.grandTotal += family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung;
-        return acc;
-      },
-      { pathianRam: 0, ramthar: 0, tualchhung: 0, grandTotal: 0 }
-    );
+  const { totals, payingFamiliesCount } = useMemo(() => {
+    const calculatedTotals = {
+        pathianRam: 0,
+        ramthar: 0,
+        tualchhung: 0,
+        grandTotal: 0
+    };
+    let count = 0;
+
+    for (const family of families) {
+        const familyTotal = family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung;
+        
+        calculatedTotals.pathianRam += family.tithe.pathianRam;
+        calculatedTotals.ramthar += family.tithe.ramthar;
+        calculatedTotals.tualchhung += family.tithe.tualchhung;
+        calculatedTotals.grandTotal += familyTotal;
+        
+        if (familyTotal > 0) {
+            count++;
+        }
+    }
+    
+    return { totals: calculatedTotals, payingFamiliesCount: count };
   }, [families]);
 
   return (
@@ -107,7 +118,15 @@ export const TitheTable: React.FC<TitheTableProps> = ({
             ))
           )}
         </tbody>
-        <tfoot className="bg-sky-200">
+        <tfoot className="bg-sky-200 divide-y divide-slate-300">
+            <tr>
+                <td className="px-2 py-3 sm:px-3 text-left text-sm font-semibold text-slate-800" colSpan={2}>
+                    Thawhlawm pe zat / Chhungkaw zat
+                </td>
+                <td className="px-2 py-3 sm:px-3 text-right text-sm font-bold text-slate-800" colSpan={5}>
+                    {payingFamiliesCount} / {families.length}
+                </td>
+            </tr>
             <tr>
                 <td className="px-2 py-4 sm:px-3 text-left text-sm font-bold text-black uppercase" colSpan={2}>Grand Total</td>
                 <td className="px-2 py-4 sm:px-3 text-right text-sm font-bold text-black">{formatCurrency(totals.pathianRam)}</td>
