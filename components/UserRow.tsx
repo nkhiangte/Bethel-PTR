@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { UserDoc, User } from '../types.ts';
+import { auth } from '../firebase.ts';
 import * as api from '../api.ts';
 
 interface UserRowProps {
@@ -22,12 +23,20 @@ const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const KeyIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+    </svg>
+);
+
 export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, onRoleUpdate, onUserRemove }) => {
     const [isAdmin, setIsAdmin] = useState(user.isAdmin);
     const [assignedBial, setAssignedBial] = useState(user.assignedBial || '');
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const isCurrentUser = user.uid === currentUser.uid;
 
@@ -38,9 +47,21 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
         }
     }, [isAdmin]);
 
+    // Clear messages after a delay
+    useEffect(() => {
+        if (successMessage || error) {
+            const timer = setTimeout(() => {
+                setSuccessMessage(null);
+                setError(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [successMessage, error]);
+
     const handleSave = async () => {
         setIsSaving(true);
         setError(null);
+        setSuccessMessage(null);
         try {
             const newRoles = {
                 isAdmin,
@@ -48,11 +69,33 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
             };
             await api.updateUserRoles(user.uid, newRoles);
             onRoleUpdate(user.uid, newRoles);
+            setSuccessMessage("Roles saved.");
         } catch (e) {
             setError("Failed to save.");
             console.error(e);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!user.email) return;
+
+        if (!window.confirm(`User "${user.email}" hnenah hian password siamthatna (Reset Link) thawn i duh em?`)) {
+            return;
+        }
+
+        setIsResetting(true);
+        setError(null);
+        setSuccessMessage(null);
+        try {
+            await auth.sendPasswordResetEmail(user.email);
+            setSuccessMessage("Reset email thawn a ni ta.");
+        } catch (e: any) {
+            setError(e.message || "Failed to send reset email.");
+            console.error(e);
+        } finally {
+            setIsResetting(false);
         }
     };
 
@@ -68,6 +111,7 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
 
         setIsDeleting(true);
         setError(null);
+        setSuccessMessage(null);
         try {
             await api.deleteUserDocument(user.uid);
             onUserRemove(user.uid);
@@ -91,7 +135,7 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
                     type="checkbox"
                     checked={isAdmin}
                     onChange={(e) => setIsAdmin(e.target.checked)}
-                    disabled={isCurrentUser || isSaving || isDeleting}
+                    disabled={isCurrentUser || isSaving || isDeleting || isResetting}
                     className="h-5 w-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 disabled:opacity-50"
                     aria-label={`Set admin status for ${user.email}`}
                 />
@@ -100,7 +144,7 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
                 <select
                     value={assignedBial}
                     onChange={(e) => setAssignedBial(e.target.value)}
-                    disabled={isAdmin || isSaving || isDeleting}
+                    disabled={isAdmin || isSaving || isDeleting || isResetting}
                     className="w-full max-w-xs bg-sky-100 border border-slate-300 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 disabled:bg-slate-200 disabled:cursor-not-allowed"
                      aria-label={`Assign Upa Bial for ${user.email}`}
                 >
@@ -113,12 +157,28 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
             <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
                  <div className="flex items-center justify-center gap-2">
                     {error && <span className="text-red-500 text-xs mr-2">{error}</span>}
+                    {successMessage && <span className="text-emerald-600 text-xs mr-2 font-semibold">{successMessage}</span>}
                     
+                    {/* RESET PASSWORD BUTTON */}
+                    <button
+                        onClick={handleResetPassword}
+                        disabled={isSaving || isDeleting || isResetting || !user.email}
+                        className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all text-sm disabled:bg-slate-400 disabled:cursor-not-allowed shadow-sm"
+                        title="Reset User Password"
+                    >
+                        {isResetting ? (
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <KeyIcon className="w-4 h-4" />
+                        )}
+                        <span className="hidden lg:inline">{isResetting ? 'Sending...' : 'Reset PW'}</span>
+                    </button>
+
                     {/* SAVE BUTTON */}
                     <button
                         onClick={handleSave}
-                        disabled={!hasChanges || isSaving || isDeleting}
-                        className="inline-flex items-center justify-center gap-2 bg-emerald-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all text-sm disabled:bg-slate-400 disabled:cursor-not-allowed shadow-sm"
+                        disabled={!hasChanges || isSaving || isDeleting || isResetting}
+                        className="inline-flex items-center justify-center gap-2 bg-emerald-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all text-sm disabled:bg-slate-400 disabled:cursor-not-allowed shadow-sm"
                         title="Save Changes"
                     >
                         {isSaving ? (
@@ -126,15 +186,15 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
                         ) : (
                             <SaveIcon className="w-4 h-4" />
                         )}
-                        <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
+                        <span className="hidden lg:inline">{isSaving ? 'Saving...' : 'Save'}</span>
                     </button>
 
                     {/* REMOVE BUTTON - only visible if not current user */}
                     {!isCurrentUser && (
                         <button
                             onClick={handleRemove}
-                            disabled={isSaving || isDeleting}
-                            className="inline-flex items-center justify-center gap-2 bg-rose-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            disabled={isSaving || isDeleting || isResetting}
+                            className="inline-flex items-center justify-center gap-2 bg-rose-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                             title="Remove User Access"
                             aria-label={`Remove user ${user.email}`}
                         >
@@ -143,7 +203,7 @@ export const UserRow: React.FC<UserRowProps> = ({ user, currentUser, upaBials, o
                             ) : (
                                 <TrashIcon className="w-4 h-4" />
                             )}
-                            <span className="hidden sm:inline">{isDeleting ? 'Removing...' : 'Paih rawh'}</span>
+                            <span className="hidden lg:inline">{isDeleting ? 'Removing...' : 'Paih rawh'}</span>
                         </button>
                     )}
                     
