@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -18,7 +19,7 @@ import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
 import { UserManagement } from './components/UserManagement.tsx';
-import { BialManagement } from './components/BialManagement.tsx';
+import { UpaBialSettings } from './components/BialManagement.tsx';
 import { ImportContributionsModal } from './components/ImportContributionsModal.tsx';
 import { SearchBar } from './components/SearchBar.tsx';
 import { InstallPWAButton } from './components/InstallPWAButton.tsx';
@@ -28,12 +29,6 @@ import type { Family, TitheCategory, Tithe, AggregateReportData, FamilyWithTithe
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
-];
-
-const UPA_BIALS = [
-  "Upa Bial 1", "Upa Bial 2", "Upa Bial 3", "Upa Bial 4", "Upa Bial 5", 
-  "Upa Bial 6", "Upa Bial 7", "Upa Bial 8", "Upa Bial 9", "Upa Bial 10", 
-  "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
 ];
 
 const currentYear = new Date().getFullYear();
@@ -72,7 +67,6 @@ const UploadIcon: React.FC<{className?: string}> = ({ className }) => (
 const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const { assignedBial, isAdmin } = user;
   
-  // Handle new users who have not been assigned a role yet
   if (!isAdmin && !assignedBial) {
     return (
       <div className="container mx-auto p-4 sm:p-6 md:p-8">
@@ -108,7 +102,11 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
       </div>
     );
   }
-
+  
+  const [upaBials, setUpaBials] = useState<string[]>([]);
+  const [currentYearBials, setCurrentYearBials] = useState<string[]>([]);
+  const [isLoadingBials, setIsLoadingBials] = useState(false);
+  
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(null);
@@ -121,7 +119,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
   const [familyToTransfer, setFamilyToTransfer] = useState<FamilyWithTithe | null>(null);
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'bialManagement'>('entry');
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'upaBialSettings'>('entry');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,31 +127,32 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const clearSelections = useCallback(() => {
-    // For Admins, reset everything to the top-level selection (Bial)
-    if (isAdmin) {
-        setSelectedYear(null);
-        setSelectedMonth(null);
-        setSelectedUpaBial(null);
-        setFamilies([]);
-        setMonthlyReportData(null);
-        setYearlyReportData(null);
-        setFamilyForReport(null);
-        setCurrentBialInfo(null);
-        setView('entry');
-        setError(null);
-        setSearchTerm('');
-    } else {
-        // For restricted users, the "dashboard" is the Month Selection for the chosen year.
-        // So we only clear the month and subsequent data, keeping the year selected.
-        setSelectedMonth(null);
-        setFamilies([]);
-        setMonthlyReportData(null);
-        setFamilyForReport(null);
-        setView('entry');
-        setError(null);
-        setSearchTerm('');
-    }
-  }, [isAdmin]);
+    setSelectedYear(null);
+    setSelectedMonth(null);
+    setSelectedUpaBial(null);
+    setFamilies([]);
+    setMonthlyReportData(null);
+    setYearlyReportData(null);
+    setFamilyForReport(null);
+    setCurrentBialInfo(null);
+    setView('entry');
+    setError(null);
+    setSearchTerm('');
+  }, []);
+
+  // Effect to load Upa Bials list for the CURRENT year for User Management & Registration
+  useEffect(() => {
+    const loadCurrentYearBials = async () => {
+        try {
+            const fetchedBials = await api.fetchUpaBials(currentYear);
+            setCurrentYearBials(fetchedBials);
+        } catch (e) {
+            console.error("Failed to fetch Upa Bials list for current year", e);
+            setError("Could not load core application settings. The application may not function correctly.");
+        }
+    };
+    loadCurrentYearBials();
+  }, []);
 
   // Effect to auto-select bial for restricted users on login
   useEffect(() => {
@@ -161,6 +160,27 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         setSelectedUpaBial(assignedBial);
     }
   }, [assignedBial]);
+
+  // Effect to load Upa Bials for the SELECTED year
+  useEffect(() => {
+    if (selectedYear) {
+      const loadBials = async () => {
+        setIsLoadingBials(true);
+        try {
+            const fetchedBials = await api.fetchUpaBials(selectedYear);
+            setUpaBials(fetchedBials);
+        } catch (e) {
+            console.error(`Failed to fetch Upa Bials list for year ${selectedYear}`, e);
+            setError(`Could not load Upa Bials list for ${selectedYear}.`);
+        } finally {
+            setIsLoadingBials(false);
+        }
+      };
+      loadBials();
+    } else {
+        setUpaBials([]);
+    }
+  }, [selectedYear]);
 
 
   // Effect to fetch families when selection is complete
@@ -185,18 +205,18 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  // Effect to fetch Bial Overseer info
+  // Effect to fetch Bial Overseer info for the selected year and bial
   useEffect(() => {
-    if (selectedUpaBial) {
+    if (selectedUpaBial && selectedYear) {
       const fetchInfo = async () => {
-        const info = await api.fetchBialInfo(selectedUpaBial);
+        const info = await api.fetchBialInfo(selectedYear, selectedUpaBial);
         setCurrentBialInfo(info);
       };
       fetchInfo();
     } else {
       setCurrentBialInfo(null);
     }
-  }, [selectedUpaBial]);
+  }, [selectedUpaBial, selectedYear]);
   
   // Effect to fetch monthly report data when view changes
   useEffect(() => {
@@ -295,7 +315,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const handleTitheChange = useCallback(async (familyId: string, category: TitheCategory, value: number) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
     
-    // Optimistic UI update
     const updatedFamilies = families.map(f => {
         if (f.id === familyId) {
             return { ...f, tithe: { ...f.tithe, [category]: value } };
@@ -304,32 +323,24 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     });
     setFamilies(updatedFamilies);
     
-    // Persist change
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, category, value);
-    // Fix typo: BirdSelectedUpaBial was used instead of selectedUpaBial
   }, [selectedYear, selectedMonth, selectedUpaBial, families]);
   
   const handleRemoveFamily = useCallback(async (familyId: string) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
-
-    // Optimistic UI update
     setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
-
-    // Persist change
     await api.removeFamily(familyId);
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
   const handleUpdateFamilyName = useCallback(async (familyId: string, name: string) => {
     if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
     const trimmedName = name.trim();
-
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f));
     await api.updateFamilyDetails(familyId, { name: trimmedName });
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
   const handleUpdateIpSerialNo = useCallback(async (familyId: string, newSerial: number | null) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
-
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f));
     await api.updateFamilyDetails(familyId, { ipSerialNo: newSerial });
   }, [selectedYear, selectedMonth, selectedUpaBial]);
@@ -339,7 +350,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
   const handleSaveTitheModal = useCallback(async (familyId: string, newTithe: Tithe) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
-
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f));
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
     handleCloseTitheModal();
@@ -347,7 +357,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
   const handleClearTithe = useCallback(async (familyId: string) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
-
     const newTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
     setFamilies(prev => prev.map(f => (f.id === familyId ? { ...f, tithe: newTithe } : f)));
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
@@ -356,15 +365,13 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const handleOpenTransferModal = (family: FamilyWithTithe) => setFamilyToTransfer(family);
   const handleCloseTransferModal = () => {
     setFamilyToTransfer(null);
-    setError(null); // Clear any errors when closing the modal
+    setError(null);
   }
 
   const handleTransferFamily = useCallback(async (familyId: string, destinationBial: string) => {
     if (!selectedYear || !selectedUpaBial) return;
-
     setError(null);
     setIsLoading(true);
-
     try {
         await api.transferFamily(familyId, destinationBial);
         setFamilies(prev => prev.filter(f => f.id !== familyId));
@@ -413,7 +420,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
             const vawngtuNames = currentBialInfo.vawngtu.map(v => v.name).join(', ');
             headerData.push([`Bial Vawngtu: ${vawngtuNames}`]);
         }
-        headerData.push([]); // Blank row for spacing
+        headerData.push([]);
 
         const worksheet = utils.aoa_to_sheet(headerData);
 
@@ -512,9 +519,8 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         doc.save(fileName);
     };
 
-
   const renderContent = () => {
-    if (error && !familyToTransfer) { // Only show main error if transfer modal isn't open
+    if (error && !familyToTransfer) {
         return <div className="text-center p-8 bg-red-100 text-red-700 rounded-lg">{error}</div>
     }
     
@@ -523,7 +529,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         if (monthlyReportData && selectedYear && selectedMonth) {
             return <AggregateReport 
                       data={monthlyReportData}
-                      upaBials={UPA_BIALS}
+                      upaBials={upaBials}
                       month={selectedMonth}
                       year={selectedYear}
                       onBack={() => setView('entry')}
@@ -538,7 +544,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         if (yearlyReportData && selectedYear) {
             return <YearlyReport
                       data={yearlyReportData}
-                      upaBials={UPA_BIALS}
+                      upaBials={upaBials}
                       year={selectedYear}
                       onBack={() => setView('entry')}
                       onGoToDashboard={clearSelections}
@@ -574,67 +580,46 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     if (view === 'userManagement') {
         return <UserManagement 
                     currentUser={user}
-                    upaBials={UPA_BIALS}
+                    upaBials={currentYearBials}
                     onBack={() => setView('entry')}
                     onGoToDashboard={clearSelections}
                 />
     }
     
-    if (view === 'bialManagement') {
-        return <BialManagement
-                    upaBials={UPA_BIALS}
+    if (view === 'upaBialSettings') {
+        return <UpaBialSettings
                     onBack={() => setView('entry')}
                     onGoToDashboard={clearSelections}
                 />
     }
 
-    // Admin Flow
-    if (isAdmin) {
-        if (!selectedUpaBial) {
-            return <UpaBialSelection 
-                        upaBials={UPA_BIALS}
-                        onSelectBial={setSelectedUpaBial}
-                        onGoToDashboard={clearSelections}
-                    />;
-        }
-        if (!selectedYear) {
-            return <YearSelection 
-                        years={YEARS} 
-                        onSelectYear={setSelectedYear} 
-                        onBack={() => setSelectedUpaBial(null)}
-                    />;
-        }
-        if (!selectedMonth) {
-            return <MonthSelection
-                        months={MONTHS} 
-                        year={selectedYear} 
-                        onSelectMonth={setSelectedMonth} 
-                        onBack={() => setSelectedYear(null)}
-                        onGoToDashboard={clearSelections}
-                        onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
-                    />;
-        }
-    } 
-    // Restricted User Flow
-    else {
-        if (!selectedUpaBial) {
-            return <LoadingSpinner message={`Loading your dashboard for ${assignedBial}...`} />;
-        }
-        if (!selectedYear) {
-            return <YearSelection 
-                        years={YEARS} 
-                        onSelectYear={setSelectedYear} 
-                    />;
-        }
-        if (!selectedMonth) {
-            return <MonthSelection 
-                        months={MONTHS} 
-                        year={selectedYear} 
-                        onSelectMonth={setSelectedMonth} 
-                        onGoToDashboard={clearSelections}
-                        onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
-                    />;
-        }
+    // Main App Flow: Year -> Bial (Admin) -> Month -> Table
+    if (!selectedYear) {
+        return <YearSelection 
+                    years={YEARS} 
+                    onSelectYear={setSelectedYear} 
+                />;
+    }
+
+    if (isAdmin && !selectedUpaBial) {
+        if (isLoadingBials) return <LoadingSpinner message={`Loading Bials for ${selectedYear}...`} />;
+        return <UpaBialSelection 
+                    upaBials={upaBials}
+                    onSelectBial={setSelectedUpaBial}
+                    onBack={() => setSelectedYear(null)}
+                    onGoToDashboard={clearSelections}
+                />;
+    }
+
+    if (!selectedMonth) {
+         return <MonthSelection 
+                    months={MONTHS} 
+                    year={selectedYear} 
+                    onSelectMonth={setSelectedMonth} 
+                    onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)}
+                    onGoToDashboard={clearSelections}
+                    onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
+                />;
     }
 
 
@@ -735,10 +720,10 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
             {isAdmin && view === 'entry' && (
                 <div className="flex flex-wrap gap-2">
                     <button
-                        onClick={() => setView('bialManagement')}
+                        onClick={() => setView('upaBialSettings')}
                         className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all text-sm"
                     >
-                        Manage Bial Vawngtu
+                        Manage Upa Bials
                     </button>
                     <button
                         onClick={() => setView('userManagement')}
@@ -784,7 +769,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
       {isImportContributionsModalOpen && selectedYear && (
           <ImportContributionsModal
               year={selectedYear}
-              upaBials={UPA_BIALS}
+              upaBials={upaBials}
               selectedBial={selectedUpaBial}
               onClose={() => setIsImportContributionsModalOpen(false)}
               onImport={handleImportContributions}
@@ -800,7 +785,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
       {familyToTransfer && selectedUpaBial && (
           <TransferFamilyModal
               family={familyToTransfer}
-              upaBials={UPA_BIALS}
+              upaBials={upaBials}
               currentBial={selectedUpaBial}
               onClose={handleCloseTransferModal}
               onTransfer={handleTransferFamily}

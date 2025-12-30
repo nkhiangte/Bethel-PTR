@@ -12,6 +12,73 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+// --- SETTINGS / UPA BIAL MANAGEMENT ---
+
+const SEED_UPA_BIALS = [
+  "Upa Bial 1", "Upa Bial 2", "Upa Bial 3", "Upa Bial 4", "Upa Bial 5",
+  "Upa Bial 6", "Upa Bial 7", "Upa Bial 8", "Upa Bial 9", "Upa Bial 10",
+  "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
+];
+
+export const fetchUpaBials = async (year: number): Promise<string[]> => {
+    const yearDocRef = db.collection('settings').doc(String(year));
+    const doc = await yearDocRef.get();
+    
+    if (doc.exists && doc.data()?.list) {
+        const bials = doc.data()!.list || [];
+        return bials.sort((a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+
+    // If doc for the year doesn't exist, find the most recent year's list to copy from.
+    // This is more robust as it doesn't require a specific Firestore index.
+    const snapshot = await db.collection('settings').get();
+
+    let bialsToSeed: string[];
+    if (snapshot.empty) {
+        // This is the first time ever running, so use the hardcoded seed.
+        bialsToSeed = SEED_UPA_BIALS;
+    } else {
+        // Find the doc with the highest year ID to copy from.
+        let latestYear = 0;
+        let latestList: string[] = [];
+        snapshot.forEach(doc => {
+            const docYear = parseInt(doc.id, 10);
+            if (!isNaN(docYear) && docYear > latestYear) {
+                latestYear = docYear;
+                latestList = doc.data().list || [];
+            }
+        });
+
+        if (latestList.length > 0) {
+             bialsToSeed = latestList;
+        } else {
+            // Fallback if no valid year documents were found,
+            // which could happen if only legacy documents exist.
+            bialsToSeed = SEED_UPA_BIALS;
+        }
+    }
+    
+    // Create the document for the new year with the determined list.
+    await yearDocRef.set({ list: bialsToSeed });
+    return bialsToSeed.sort((a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+};
+
+export const updateUpaBialsList = async (year: number, newList: string[]): Promise<void> => {
+    const yearDocRef = db.collection('settings').doc(String(year));
+    await yearDocRef.set({ list: newList });
+};
+
+export const isBialInUse = async (year: number, bialName: string): Promise<boolean> => {
+    // Check against titheLogs for the specified year, not the families collection.
+    const logsQuery = db.collection('titheLogs')
+                        .where('year', '==', year)
+                        .where('upaBial', '==', bialName)
+                        .limit(1);
+    const snapshot = await logsQuery.get();
+    return !snapshot.empty;
+};
+
+
 // --- USER MANAGEMENT API ---
 
 export const createUserDocument = async (user: FirebaseUser, additionalData?: { displayName: string, assignedBial: string | null }): Promise<void> => {
@@ -463,19 +530,9 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
 };
 
 
-// --- BIAL MANAGEMENT API ---
+// --- BIAL MANAGEMENT API (YEAR-SPECIFIC) ---
 
 const convertToNewBialInfo = (docData: any): BialInfo => {
-    // Handle legacy single overseer format
-    if (docData && docData.overseerName !== undefined) {
-        return {
-            vawngtu: [{
-                name: docData.overseerName,
-                phone: docData.overseerPhone || ''
-            }]
-        };
-    }
-    // Handle documents that have the new field but it might not be an array
     if (docData && Array.isArray(docData.vawngtu)) {
         return docData as BialInfo;
     }
@@ -483,26 +540,30 @@ const convertToNewBialInfo = (docData: any): BialInfo => {
     return { vawngtu: [] };
 };
 
-export const updateBialInfo = async (upaBial: string, data: BialInfo): Promise<void> => {
-    const bialRef = db.collection('bialInfo').doc(upaBial);
-    // Overwrite the document with the new structure. This also handles removing old fields.
+export const updateBialInfo = async (year: number, upaBial: string, data: BialInfo): Promise<void> => {
+    const bialRef = db.collection('settings').doc(String(year)).collection('bialInfo').doc(upaBial);
     await bialRef.set({ ...data, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() });
 };
 
-export const fetchAllBialInfo = async (): Promise<Map<string, BialInfo>> => {
+export const fetchAllBialInfo = async (year: number): Promise<Map<string, BialInfo>> => {
     const infoMap = new Map<string, BialInfo>();
-    const snapshot = await db.collection('bialInfo').get();
+    const snapshot = await db.collection('settings').doc(String(year)).collection('bialInfo').get();
     snapshot.forEach(doc => {
         infoMap.set(doc.id, convertToNewBialInfo(doc.data()));
     });
     return infoMap;
 };
 
-export const fetchBialInfo = async (upaBial: string): Promise<BialInfo | null> => {
-    const docRef = db.collection('bialInfo').doc(upaBial);
+export const fetchBialInfo = async (year: number, upaBial: string): Promise<BialInfo | null> => {
+    const docRef = db.collection('settings').doc(String(year)).collection('bialInfo').doc(upaBial);
     const docSnap = await docRef.get();
     if (docSnap.exists) {
         return convertToNewBialInfo(docSnap.data());
     }
     return null;
+};
+
+export const deleteBialInfo = async (year: number, upaBial: string): Promise<void> => {
+    const bialRef = db.collection('settings').doc(String(year)).collection('bialInfo').doc(upaBial);
+    await bialRef.delete();
 };

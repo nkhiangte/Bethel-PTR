@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // Fix: Removed v9 modular import. v8 compat function is called on auth object.
 import { auth } from '../firebase.ts';
 import * as api from '../api.ts';
@@ -6,12 +6,6 @@ import * as api from '../api.ts';
 interface RegistrationPageProps {
     onSwitchToLogin: () => void;
 }
-
-const UPA_BIALS = [
-  "Upa Bial 1", "Upa Bial 2", "Upa Bial 3", "Upa Bial 4", "Upa Bial 5", 
-  "Upa Bial 6", "Upa Bial 7", "Upa Bial 8", "Upa Bial 9", "Upa Bial 10", 
-  "Upa Bial 11", "Upa Bial 12", "Upa Bial 13"
-];
 
 export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLogin }) => {
     const [email, setEmail] = useState('');
@@ -22,6 +16,26 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [upaBialsList, setUpaBialsList] = useState<string[]>([]);
+    const [isLoadingBials, setIsLoadingBials] = useState(true);
+
+    useEffect(() => {
+        const loadBials = async () => {
+            setIsLoadingBials(true);
+            try {
+                // Fetch bials for the current year for new registrations
+                const currentYear = new Date().getFullYear();
+                const bials = await api.fetchUpaBials(currentYear);
+                setUpaBialsList(bials);
+            } catch (err) {
+                console.error("Failed to load Upa Bials", err);
+                setError("Could not load list of Upa Bials. Please try again later.");
+            } finally {
+                setIsLoadingBials(false);
+            }
+        };
+        loadBials();
+    }, []);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -111,9 +125,10 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
                             onChange={(e) => setAssignedBial(e.target.value)}
                             className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
                             required
+                            disabled={isLoadingBials}
                         >
-                            <option value="">-- Select Upa Bial --</option>
-                            {UPA_BIALS.map(bial => (
+                            <option value="">{isLoadingBials ? 'Loading...' : '-- Select Upa Bial --'}</option>
+                            {upaBialsList.map(bial => (
                                 <option key={bial} value={bial}>{bial}</option>
                             ))}
                         </select>
@@ -161,7 +176,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onSwitchToLo
                         </div>
                     </div>
                     <div className="pt-4">
-                        <button type="submit" disabled={isLoading} className="w-full bg-amber-600 text-white font-bold px-6 py-4 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400">
+                        <button type="submit" disabled={isLoading || isLoadingBials} className="w-full bg-amber-600 text-white font-bold px-6 py-4 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400">
                             {isLoading ? 'Registering...' : 'Register Now'}
                         </button>
                     </div>
