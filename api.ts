@@ -404,21 +404,10 @@ export const removeFamily = async (familyId: string): Promise<void> => {
 };
 
 export const transferFamily = async (familyId: string, destinationUpaBial: string): Promise<void> => {
-    // Fix: Use v8 compat syntax
-    const batch = db.batch();
-
-    // Update the family's currentBial
+    // Only update the currentBial field on the family document.
+    // Do NOT update historical titheLogs, as they should reflect the bial at the time of contribution.
     const familyRef = db.collection('families').doc(familyId);
-    batch.update(familyRef, { currentBial: destinationUpaBial });
-    
-    // Find and update all associated tithe logs
-    const logsQuery = db.collection('titheLogs').where('familyId', '==', familyId);
-    const logsSnapshot = await logsQuery.get();
-    logsSnapshot.forEach(logDoc => {
-        batch.update(logDoc.ref, { upaBial: destinationUpaBial });
-    });
-
-    await batch.commit();
+    await familyRef.update({ currentBial: destinationUpaBial });
 };
 
 // --- REPORTING API ---

@@ -29,9 +29,10 @@ interface InternalBialRowProps {
     bialInfo: BialInfo | undefined;
     onVawngtuSave: (bialName: string, newInfo: BialInfo) => Promise<void>;
     onDeleteBial: (bialName: string) => void;
+    isLocked: boolean; // New prop for locking
 }
 
-const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, onVawngtuSave, onDeleteBial }) => {
+const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, onVawngtuSave, onDeleteBial, isLocked }) => {
     const [vawngtuList, setVawngtuList] = useState<BialVawngtu[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState('');
@@ -74,22 +75,22 @@ const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, o
                 <div className="space-y-2">
                     {vawngtuList.map((vawngtu, index) => (
                          <div key={index} className="flex items-center gap-2">
-                            <input type="text" value={vawngtu.name} onChange={(e) => handleVawngtuChange(index, 'name', e.target.value)} placeholder="Hming" className="w-full bg-sky-100 border border-slate-300 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-amber-500"/>
-                            <input type="text" value={vawngtu.phone} onChange={(e) => handleVawngtuChange(index, 'phone', e.target.value)} placeholder="Phone" className="w-full bg-sky-100 border border-slate-300 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-amber-500"/>
-                            <button onClick={() => handleRemoveVawngtu(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full" title="Remove Vawngtu"><TrashIcon className="w-5 h-5" /></button>
+                            <input type="text" value={vawngtu.name} onChange={(e) => handleVawngtuChange(index, 'name', e.target.value)} placeholder="Hming" className="w-full bg-sky-100 border border-slate-300 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-amber-500" disabled={isLocked}/>
+                            <input type="text" value={vawngtu.phone} onChange={(e) => handleVawngtuChange(index, 'phone', e.target.value)} placeholder="Phone" className="w-full bg-sky-100 border border-slate-300 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-amber-500" disabled={isLocked}/>
+                            <button onClick={() => handleRemoveVawngtu(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full" title="Remove Vawngtu" disabled={isLocked}><TrashIcon className="w-5 h-5" /></button>
                          </div>
                     ))}
-                    <button onClick={handleAddVawngtu} className="flex items-center gap-1 text-sm font-semibold text-amber-700 hover:text-amber-800 px-3 py-1 rounded-md hover:bg-amber-100"><AddIcon className="w-4 h-4" /> Add Vawngtu</button>
+                    <button onClick={handleAddVawngtu} className="flex items-center gap-1 text-sm font-semibold text-amber-700 hover:text-amber-800 px-3 py-1 rounded-md hover:bg-amber-100" disabled={isLocked}><AddIcon className="w-4 h-4" /> Add Vawngtu</button>
                 </div>
             </td>
             <td className="px-4 py-3 text-center text-sm font-medium align-top">
                  <div className="flex flex-col items-center gap-2">
                     {error && <span className="text-red-500 text-xs mb-1">{error}</span>}
-                    <button onClick={handleSave} disabled={!hasChanges || isSaving} className="w-28 inline-flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 disabled:bg-slate-400">
+                    <button onClick={handleSave} disabled={isLocked || !hasChanges || isSaving} className="w-28 inline-flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 disabled:bg-slate-400">
                         {isSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <SaveIcon className="w-4 h-4" />}
                         <span>{isSaving ? 'Saving...' : 'Save'}</span>
                     </button>
-                    <button onClick={() => onDeleteBial(bialName)} className="w-28 inline-flex items-center justify-center gap-2 bg-rose-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-rose-700">
+                    <button onClick={() => onDeleteBial(bialName)} className="w-28 inline-flex items-center justify-center gap-2 bg-rose-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-rose-700" disabled={isLocked}>
                         <TrashIcon className="w-4 h-4" />
                         <span>Delete Bial</span>
                     </button>
@@ -116,6 +117,8 @@ export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoTo
     const [error, setError] = useState<string | null>(null);
     const [newBialName, setNewBialName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+
+    const isYearLocked = managementYear < currentYear;
 
     const fetchData = useCallback(async (year: number) => {
         setIsLoading(true);
@@ -214,6 +217,11 @@ export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoTo
                 >
                     {YEARS.map(year => <option key={year} value={year}>{year}</option>)}
                 </select>
+                {isYearLocked && (
+                    <p className="mt-2 text-sm text-amber-700">
+                        <span className="font-semibold">Note:</span> Data for past years is locked and cannot be modified.
+                    </p>
+                )}
             </div>
 
             {isLoading ? <LoadingSpinner message={`Loading settings for ${managementYear}...`} /> :
@@ -223,8 +231,8 @@ export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoTo
                 <div className="mb-8 p-6 bg-sky-100 rounded-lg border border-sky-200">
                     <h3 className="text-lg font-bold text-slate-800 mb-3">Add New Upa Bial for {managementYear}</h3>
                     <form onSubmit={handleAddBial} className="flex flex-col sm:flex-row gap-4">
-                        <input type="text" value={newBialName} onChange={(e) => setNewBialName(e.target.value)} placeholder="e.g., Upa Bial 14" className="flex-grow w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500" required />
-                        <button type="submit" disabled={isAdding} className="bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 disabled:bg-slate-400">
+                        <input type="text" value={newBialName} onChange={(e) => setNewBialName(e.target.value)} placeholder="e.g., Upa Bial 14" className="flex-grow w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500" required disabled={isYearLocked} />
+                        <button type="submit" disabled={isYearLocked || isAdding} className="bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 disabled:bg-slate-400">
                             {isAdding ? 'Adding...' : 'Add Bial'}
                         </button>
                     </form>
@@ -248,6 +256,7 @@ export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoTo
                                         bialInfo={allBialInfo.get(bial)}
                                         onVawngtuSave={handleVawngtuSave}
                                         onDeleteBial={handleDeleteBial}
+                                        isLocked={isYearLocked}
                                     />
                                 )) : (
                                     <tr>
