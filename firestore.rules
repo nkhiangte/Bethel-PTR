@@ -1,6 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if a specific year is explicitly archived
+    function isYearArchived(yearId) {
+      return exists(/databases/$(database)/documents/settings/$(yearId)/archive/current) &&
+             get(/databases/$(database)/documents/settings/$(yearId)/archive/current).data.isArchived == true;
+    }
+
     // Allow anyone to read the Upa Bial list and other settings documents
     // This is necessary for the registration page to display available Bials.
     match /settings/{yearId} {
@@ -9,7 +15,18 @@ service cloud.firestore {
       // Bial info subcollection (e.g., overseer details)
       match /bialInfo/{bialName} {
         allow read: if true;
-        allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+        // Allow create, update, delete only if the year is not archived AND user is admin
+        allow create, update, delete: if request.auth != null && 
+                                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true &&
+                                      !isYearArchived(yearId);
+      }
+      
+      // Archive status subcollection
+      match /archive/{statusId} {
+        allow read: if true; // Public read to determine UI state
+        // Only admins can create or update the archive status
+        allow create, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+        allow delete: if false; // Archive status documents should not be deleted
       }
     }
 
@@ -29,7 +46,11 @@ service cloud.firestore {
     match /families/{familyId} {
       allow read: if request.auth != null; // All authenticated users can read families
       
-      // Allow create/update/delete if user is admin OR the user's assignedBial matches the family's currentBial
+      // Allow create/update/delete based on currentBial and admin status.
+      // NOTE: This does NOT check `isYearArchived` for families because the family document
+      // represents a master record. If a family is active (currentBial != null), its
+      // name/serial should still be editable, even if it contributed in an archived year.
+      // The immutability of "names" is achieved by not allowing updates to *past* contribution logs.
       allow create, update, delete: if request.auth != null && 
                                       (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
                                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBial == resource.data.currentBial);
@@ -41,8 +62,9 @@ service cloud.firestore {
     match /titheLogs/{logId} {
       allow read: if request.auth != null;
       
-      // Allow create/update/delete if user is admin OR the user's assignedBial matches the log's upaBial
+      // Allow create, update, delete only if the year for the log is NOT archived
       allow create, update, delete: if request.auth != null && 
+                                      !isYearArchived(resource.data.year.toString()) && // Check archive status of the log's year
                                       (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
                                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBial == resource.data.upaBial);
     }

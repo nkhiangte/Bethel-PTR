@@ -126,6 +126,9 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [isImportContributionsModalOpen, setIsImportContributionsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // New state for year archive status
+  const [isYearExplicitlyArchived, setIsYearExplicitlyArchived] = useState<boolean>(false);
+
   const clearSelections = useCallback(() => {
     setSelectedYear(null);
     setSelectedMonth(null);
@@ -138,6 +141,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setView('entry');
     setError(null);
     setSearchTerm('');
+    setIsYearExplicitlyArchived(false); // Reset archive status
   }, []);
 
   // Effect to load Upa Bials list for the CURRENT year for User Management & Registration
@@ -161,24 +165,30 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [assignedBial]);
 
-  // Effect to load Upa Bials for the SELECTED year
+  // Effect to load Upa Bials for the SELECTED year AND fetch its archive status
   useEffect(() => {
     if (selectedYear) {
-      const loadBials = async () => {
+      const loadYearData = async () => {
         setIsLoadingBials(true);
+        setError(null);
         try {
-            const fetchedBials = await api.fetchUpaBials(selectedYear);
+            const [fetchedBials, archivedStatus] = await Promise.all([
+                api.fetchUpaBials(selectedYear),
+                api.fetchArchiveStatus(selectedYear)
+            ]);
             setUpaBials(fetchedBials);
+            setIsYearExplicitlyArchived(archivedStatus);
         } catch (e) {
-            console.error(`Failed to fetch Upa Bials list for year ${selectedYear}`, e);
-            setError(`Could not load Upa Bials list for ${selectedYear}.`);
+            console.error(`Failed to fetch Upa Bials list or archive status for year ${selectedYear}`, e);
+            setError(`Could not load Upa Bials list or status for ${selectedYear}.`);
         } finally {
             setIsLoadingBials(false);
         }
       };
-      loadBials();
+      loadYearData();
     } else {
         setUpaBials([]);
+        setIsYearExplicitlyArchived(false);
     }
   }, [selectedYear]);
 
@@ -259,7 +269,10 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   }, [view, selectedYear]);
 
   // Determine if data entry/modification should be locked for the selected year
-  const isDataEntryLocked = selectedYear !== null && selectedYear < currentYear;
+  const isDataEntryLocked = useMemo(() => {
+    if (selectedYear === null) return false;
+    return selectedYear < currentYear || isYearExplicitlyArchived;
+  }, [selectedYear, currentYear, isYearExplicitlyArchived]);
 
   const handleAddFamily = useCallback(async (name: string) => {
     if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
@@ -301,7 +314,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
   const handleImportContributions = async (year: number, month: string, upaBial: string, data: any[]) => {
     if (isDataEntryLocked) {
-      throw new Error("Cannot import contributions for past years.");
+      throw new Error("Cannot import contributions for locked years.");
     }
     try {
         const result = await api.importContributions(year, month, upaBial, data);
@@ -595,6 +608,8 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         return <UpaBialSettings
                     onBack={() => setView('entry')}
                     onGoToDashboard={clearSelections}
+                    currentYear={currentYear}
+                    years={YEARS}
                 />
     }
 
@@ -625,6 +640,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                     onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)}
                     onGoToDashboard={clearSelections}
                     onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
+                    isDataEntryLocked={isDataEntryLocked} // Pass the locked status
                 />;
     }
 
@@ -647,6 +663,11 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                             <p className="text-slate-600">Bial Vawngtu: <strong>{currentBialInfo.vawngtu.map(v => v.name).join(', ')}</strong></p>
                         )}
                         <p className="text-slate-600 mt-1">A hnuai ah hian chhungkaw tin te thawhlawm chhunglut rawh le.</p>
+                        {isDataEntryLocked && (
+                            <p className="mt-2 text-sm text-amber-700 font-semibold">
+                                Note: Data for {selectedYear} is {selectedYear < currentYear ? 'archived (past year)' : 'explicitly archived'} and cannot be modified.
+                            </p>
+                        )}
                     </div>
                     <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
                         <button
@@ -697,6 +718,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 onViewFamilyReport={handleViewFamilyReport}
                 currentYear={currentYear}
                 selectedYear={selectedYear}
+                isDataEntryLocked={isDataEntryLocked} // Pass to table
             />
 
             {filteredFamilies.length > 0 && (

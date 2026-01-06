@@ -2,7 +2,7 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import { db } from './firebase.ts';
-import type { Family, Tithe, TitheCategory, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe, UserDoc, BialInfo } from './types.ts';
+import type { Family, Tithe, TitheCategory, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe, UserDoc, BialInfo, ArchiveStatus } from './types.ts';
 
 // Fix: Use firebase.User for FirebaseUser type
 type FirebaseUser = firebase.User;
@@ -72,10 +72,21 @@ export const isBialInUse = async (year: number, bialName: string): Promise<boole
     // Check against titheLogs for the specified year, not the families collection.
     const logsQuery = db.collection('titheLogs')
                         .where('year', '==', year)
-                        .where('upaBial', '==', bialName)
+                        .where('month', '==', bialName)
                         .limit(1);
     const snapshot = await logsQuery.get();
     return !snapshot.empty;
+};
+
+export const fetchArchiveStatus = async (year: number): Promise<boolean> => {
+    const docRef = db.collection('settings').doc(String(year)).collection('archive').doc('current');
+    const docSnap = await docRef.get();
+    return docSnap.exists && (docSnap.data() as ArchiveStatus).isArchived === true;
+};
+
+export const updateArchiveStatus = async (year: number, isArchived: boolean): Promise<void> => {
+    const docRef = db.collection('settings').doc(String(year)).collection('archive').doc('current');
+    await docRef.set({ isArchived: isArchived }, { merge: true });
 };
 
 

@@ -78,3 +78,8 @@ export interface BialVawngtu {
 export interface BialInfo {
   vawngtu: BialVawngtu[];
 }
+
+// For archiving status of a year
+export interface ArchiveStatus {
+  isArchived: boolean;
+}

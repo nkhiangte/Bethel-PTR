@@ -18,6 +18,7 @@ interface TitheTableProps {
   onViewFamilyReport: (family: {id: string; name: string}) => void;
   currentYear: number; // New prop
   selectedYear: number; // New prop
+  isDataEntryLocked: boolean; // New prop
 }
 
 const formatCurrency = (value: number) => {
@@ -36,7 +37,8 @@ export const TitheTable: React.FC<TitheTableProps> = ({
     onClearTithe,
     onViewFamilyReport,
     currentYear, // Destructure new prop
-    selectedYear // Destructure new prop
+    selectedYear, // Destructure new prop
+    isDataEntryLocked // Destructure new prop
 }) => {
     
   const { totals, payingFamiliesCount } = useMemo(() => {
@@ -121,6 +123,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
                 formatCurrency={formatCurrency}
                 currentYear={currentYear} // Pass new prop
                 selectedYear={selectedYear} // Pass new prop
+                isDataEntryLocked={isDataEntryLocked} // Pass new prop
               />
             ))
           )}

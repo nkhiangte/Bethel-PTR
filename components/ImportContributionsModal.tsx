@@ -59,9 +59,9 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
             setFileData(null);
             setFileName('');
             setResult(null);
-            setError("Cannot import contributions for past years.");
+            setError("Cannot import contributions for locked years.");
             setIsLoading(false);
-        } else if (error === "Cannot import contributions for past years.") {
+        } else if (error === "Cannot import contributions for locked years.") {
              setError(null); // Clear the specific error if year is no longer locked
         }
     }, [isYearLocked, error]);
@@ -173,7 +173,7 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                         <p className="text-slate-500">Bulk upload tithe data for {year} from an Excel file.</p>
                         {isYearLocked && (
                             <p className="mt-2 text-sm text-amber-700">
-                                <span className="font-semibold">Note:</span> Importing contributions is disabled for past years.
+                                <span className="font-semibold">Note:</span> Importing contributions is disabled for this year as it is locked.
                             </p>
                         )}
                     </div>
