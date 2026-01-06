@@ -1,11 +1,11 @@
 
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 
 interface TitheRowProps {
   family: FamilyWithTithe;
+  isSelected: boolean; // New prop
+  onToggleSelect: () => void; // New prop
   onTitheChange: (familyId: string, category: TitheCategory, value: number) => void;
   onRemoveFamily: (familyId: string, year: number) => void; // Updated signature
   onUpdateFamilyName: (familyId: string, newName: string) => void;
@@ -70,6 +70,8 @@ const TransferIcon: React.FC<{className?: string}> = ({ className }) => (
 
 export const TitheRow: React.FC<TitheRowProps> = ({ 
     family,
+    isSelected, // New prop
+    onToggleSelect, // New prop
     onTitheChange, 
     onRemoveFamily, 
     onUpdateFamilyName,
@@ -159,7 +161,17 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     const familyTotal = family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung;
 
     return (
-        <tr className="group hover:bg-sky-100 transition-colors duration-150">
+        <tr className={`group hover:bg-sky-100 transition-colors duration-150 ${isSelected ? 'bg-amber-50' : ''}`}>
+            {/* Checkbox */}
+            <td className="px-2 py-2 w-8 text-center no-print">
+                <input 
+                    type="checkbox" 
+                    checked={isSelected}
+                    onChange={onToggleSelect}
+                    className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                    disabled={isDataEntryLocked}
+                />
+            </td>
             {/* IP Serial No. */}
             <td className="px-2 py-2 sm:px-3 text-sm text-slate-600 whitespace-nowrap">
                 {isEditing ? (

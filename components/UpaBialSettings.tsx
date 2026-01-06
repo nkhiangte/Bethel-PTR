@@ -35,6 +35,12 @@ const UnlockIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const UserMinusIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+       <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm6 11h-8v-2h8v2zm-6-5c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+    </svg>
+);
+
 
 // --- BIAL ROW COMPONENT (Internal) ---
 interface InternalBialRowProps {
@@ -42,12 +48,14 @@ interface InternalBialRowProps {
     bialInfo: BialInfo | undefined;
     onVawngtuSave: (bialName: string, newInfo: BialInfo) => Promise<void>;
     onDeleteBial: (bialName: string) => void;
+    onClearFamilies: (bialName: string) => Promise<void>;
     isLocked: boolean; // New prop for locking
 }
 
-const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, onVawngtuSave, onDeleteBial, isLocked }) => {
+const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, onVawngtuSave, onDeleteBial, onClearFamilies, isLocked }) => {
     const [vawngtuList, setVawngtuList] = useState<BialVawngtu[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isClearing, setIsClearing] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -55,7 +63,16 @@ const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, o
     }, [bialInfo]);
     
     const handleAddVawngtu = () => setVawngtuList([...vawngtuList, { name: '', phone: '' }]);
+    
     const handleRemoveVawngtu = (index: number) => setVawngtuList(vawngtuList.filter((_, i) => i !== index));
+    
+    const handleClearVawngtus = () => {
+        if (vawngtuList.length === 0) return;
+        if (window.confirm(`Are you sure you want to remove ALL Vawngtus from ${bialName}?`)) {
+            setVawngtuList([]);
+        }
+    };
+
     const handleVawngtuChange = (index: number, field: keyof BialVawngtu, value: string) => {
         const newList = [...vawngtuList];
         newList[index] = { ...newList[index], [field]: value };
@@ -76,6 +93,24 @@ const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, o
             setIsSaving(false);
         }
     };
+
+    const handleClearFamiliesClick = async () => {
+        if (isLocked) return;
+        if (!window.confirm(`WARNING: Are you sure you want to delete ALL families assigned to "${bialName}"? \n\nThis will:\n1. Unassign all families currently in this Bial.\n2. DELETE all tithe logs for this Bial in the selected year.\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        setIsClearing(true);
+        setError('');
+        try {
+            await onClearFamilies(bialName);
+            alert(`Families cleared from ${bialName}.`);
+        } catch (e: any) {
+             setError(e.message || 'Failed to clear families.');
+        } finally {
+            setIsClearing(false);
+        }
+    };
     
     const hasChanges = JSON.stringify(vawngtuList) !== JSON.stringify(bialInfo?.vawngtu || []);
 
@@ -93,17 +128,38 @@ const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, o
                             <button onClick={() => handleRemoveVawngtu(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" title="Remove Vawngtu" disabled={isLocked}><TrashIcon className="w-5 h-5" /></button>
                          </div>
                     ))}
-                    <button onClick={handleAddVawngtu} className="flex items-center gap-1 text-sm font-semibold text-amber-700 hover:text-amber-800 px-3 py-1 rounded-md hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isLocked}><AddIcon className="w-4 h-4" /> Add Vawngtu</button>
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                        <button onClick={handleAddVawngtu} className="flex items-center gap-1 text-sm font-semibold text-amber-700 hover:text-amber-800 px-3 py-1 rounded-md hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isLocked}>
+                            <AddIcon className="w-4 h-4" /> Add Vawngtu
+                        </button>
+                        {vawngtuList.length > 0 && (
+                            <button 
+                                onClick={handleClearVawngtus} 
+                                className="flex items-center gap-1 text-sm font-semibold text-rose-600 hover:text-rose-800 px-3 py-1 rounded-md hover:bg-rose-50 disabled:opacity-50 disabled:cursor-not-allowed" 
+                                disabled={isLocked}
+                                title="Remove all Vawngtus from this list"
+                            >
+                                <TrashIcon className="w-4 h-4" /> Clear All
+                            </button>
+                        )}
+                    </div>
                 </div>
             </td>
             <td className="px-4 py-3 text-center text-sm font-medium align-top">
                  <div className="flex flex-col items-center gap-2">
                     {error && <span className="text-red-500 text-xs mb-1">{error}</span>}
-                    <button onClick={handleSave} disabled={isLocked || !hasChanges || isSaving} className="w-28 inline-flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                    
+                    <button onClick={handleSave} disabled={isLocked || !hasChanges || isSaving} className="w-32 inline-flex items-center justify-center gap-2 bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
                         {isSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <SaveIcon className="w-4 h-4" />}
                         <span>{isSaving ? 'Saving...' : 'Save'}</span>
                     </button>
-                    <button onClick={() => onDeleteBial(bialName)} className="w-28 inline-flex items-center justify-center gap-2 bg-rose-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isLocked}>
+
+                     <button onClick={handleClearFamiliesClick} disabled={isLocked || isClearing} className="w-32 inline-flex items-center justify-center gap-2 bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed" title="Delete all families and tithe logs for this Bial">
+                        {isClearing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <UserMinusIcon className="w-4 h-4" />}
+                        <span>{isClearing ? 'Clearing...' : 'Clear Fams'}</span>
+                    </button>
+
+                    <button onClick={() => onDeleteBial(bialName)} className="w-32 inline-flex items-center justify-center gap-2 bg-rose-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isLocked}>
                         <TrashIcon className="w-4 h-4" />
                         <span>Delete Bial</span>
                     </button>
@@ -220,6 +276,10 @@ export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoTo
             setError("Failed to delete Bial.");
             setIsLoading(false);
         }
+    };
+
+    const handleClearFamilies = async (bialName: string) => {
+         await api.removeAllFamiliesFromBial(managementYear, bialName);
     };
 
     const handleVawngtuSave = useCallback(async (bialName: string, newInfo: BialInfo) => {
@@ -358,6 +418,7 @@ export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoTo
                                         bialInfo={allBialInfo.get(bial)}
                                         onVawngtuSave={handleVawngtuSave}
                                         onDeleteBial={handleDeleteBial}
+                                        onClearFamilies={handleClearFamilies}
                                         isLocked={isModificationLocked}
                                     />
                                 )) : (

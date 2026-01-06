@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 // Fix: Import firebase v8 compat and auth instance
 import firebase from 'firebase/compat/app';
@@ -6,7 +5,7 @@ import 'firebase/compat/auth';
 import { auth } from './firebase.ts';
 import * as api from './api.ts';
 import type { User } from './types.ts';
-import App from './App.tsx';
+import { App } from './App.tsx';
 import { LoginPage } from './components/LoginPage.tsx';
 import { RegistrationPage } from './components/RegistrationPage.tsx';
 import { ForgotPasswordPage } from './components/ForgotPasswordPage.tsx';

@@ -1,5 +1,4 @@
 
-
 // Fix: import firebase compat for types and serverTimestamp
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
@@ -467,6 +466,64 @@ export const removeFamily = async (familyId: string, year: number): Promise<void
     });
 
     await batch.commit();
+};
+
+export const bulkRemoveFamilies = async (familyIds: string[], year: number): Promise<void> => {
+    // Process in chunks to ensure reliability, though we could try parallel.
+    // Given potential transaction limits, simple parallel execution with chunking is safest.
+    const chunkSize = 10;
+    for (let i = 0; i < familyIds.length; i += chunkSize) {
+        const chunk = familyIds.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(id => removeFamily(id, year)));
+    }
+};
+
+export const removeAllFamiliesFromBial = async (year: number, bialName: string): Promise<void> => {
+    // 1. Unassign families currently in this Bial
+    const familiesQuery = db.collection('families').where('currentBial', '==', bialName);
+    const familiesSnap = await familiesQuery.get();
+    
+    const familyBatches = [];
+    let currentFamilyBatch = db.batch();
+    let familyOpCount = 0;
+
+    familiesSnap.forEach(doc => {
+        currentFamilyBatch.update(doc.ref, { currentBial: null });
+        familyOpCount++;
+        if (familyOpCount >= 450) {
+            familyBatches.push(currentFamilyBatch.commit());
+            currentFamilyBatch = db.batch();
+            familyOpCount = 0;
+        }
+    });
+    if (familyOpCount > 0) {
+        familyBatches.push(currentFamilyBatch.commit());
+    }
+    await Promise.all(familyBatches);
+
+    // 2. Delete tithe logs for this Bial in this Year
+    const logsQuery = db.collection('titheLogs')
+        .where('year', '==', year)
+        .where('upaBial', '==', bialName);
+    const logsSnap = await logsQuery.get();
+
+    const logBatches = [];
+    let currentLogBatch = db.batch();
+    let logOpCount = 0;
+
+    logsSnap.forEach(doc => {
+        currentLogBatch.delete(doc.ref);
+        logOpCount++;
+        if (logOpCount >= 450) {
+            logBatches.push(currentLogBatch.commit());
+            currentLogBatch = db.batch();
+            logOpCount = 0;
+        }
+    });
+    if (logOpCount > 0) {
+        logBatches.push(currentLogBatch.commit());
+    }
+    await Promise.all(logBatches);
 };
 
 export const transferFamily = async (familyId: string, destinationUpaBial: string): Promise<void> => {
