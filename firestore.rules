@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to read the Upa Bial list and other settings documents
+    // This is necessary for the registration page to display available Bials.
+    match /settings/{yearId} {
+      allow read: if true;
+
+      // Bial info subcollection (e.g., overseer details)
+      match /bialInfo/{bialName} {
+        allow read: if true;
+        allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      }
+    }
+
+    // User documents:
+    // - Only the authenticated user can read/update their own document.
+    // - Only admin can list/create/delete users or update other users' roles.
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId; // Allow users to create their own doc on first login/registration
+      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Families collection:
+    // - All authenticated users can read.
+    // - Only admins or assigned bial overseers can create, update, or delete families.
+    match /families/{familyId} {
+      allow read: if request.auth != null; // All authenticated users can read families
+      
+      // Allow create/update/delete if user is admin OR the user's assignedBial matches the family's currentBial
+      allow create, update, delete: if request.auth != null && 
+                                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+                                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBial == resource.data.currentBial);
+    }
+
+    // Tithe Logs collection:
+    // - All authenticated users can read.
+    // - Only admins or assigned bial overseers can create, update, or delete tithe logs.
+    match /titheLogs/{logId} {
+      allow read: if request.auth != null;
+      
+      // Allow create/update/delete if user is admin OR the user's assignedBial matches the log's upaBial
+      allow create, update, delete: if request.auth != null && 
+                                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+                                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBial == resource.data.upaBial);
+    }
+  }
+}
