@@ -451,11 +451,16 @@ export const updateFamilyDetails = async (familyId: string, data: { name?: strin
 
 export const removeFamily = async (familyId: string, year: number): Promise<void> => {
     const batch = db.batch();
+    const currentYear = new Date().getFullYear();
     
     // 1. Update the family document's currentBial to null
-    // This effectively removes them from any active Bial assignment going forward.
-    const familyRef = db.collection('families').doc(familyId);
-    batch.update(familyRef, { currentBial: null });
+    // ONLY perform this global unassignment if we are editing the CURRENT year.
+    // If we are deleting a family from a future year (e.g. 2026), we don't want to unassign them from the current year (2025).
+    // If we are deleting a family from a past year (e.g. 2024), we don't want to unassign them from the current year.
+    if (year === currentYear) {
+        const familyRef = db.collection('families').doc(familyId);
+        batch.update(familyRef, { currentBial: null });
+    }
 
     // 2. Delete all associated tithe logs *only for the specified year*
     // This preserves contributions from other years.
@@ -479,29 +484,35 @@ export const bulkRemoveFamilies = async (familyIds: string[], year: number): Pro
 };
 
 export const removeAllFamiliesFromBial = async (year: number, bialName: string): Promise<void> => {
-    // 1. Unassign families currently in this Bial
-    const familiesQuery = db.collection('families').where('currentBial', '==', bialName);
-    const familiesSnap = await familiesQuery.get();
+    const currentYear = new Date().getFullYear();
     
-    const familyBatches = [];
-    let currentFamilyBatch = db.batch();
-    let familyOpCount = 0;
+    // 1. Unassign families currently in this Bial
+    // ONLY perform this global unassignment if we are editing the CURRENT year.
+    if (year === currentYear) {
+        const familiesQuery = db.collection('families').where('currentBial', '==', bialName);
+        const familiesSnap = await familiesQuery.get();
+        
+        const familyBatches = [];
+        let currentFamilyBatch = db.batch();
+        let familyOpCount = 0;
 
-    familiesSnap.forEach(doc => {
-        currentFamilyBatch.update(doc.ref, { currentBial: null });
-        familyOpCount++;
-        if (familyOpCount >= 450) {
+        familiesSnap.forEach(doc => {
+            currentFamilyBatch.update(doc.ref, { currentBial: null });
+            familyOpCount++;
+            if (familyOpCount >= 450) {
+                familyBatches.push(currentFamilyBatch.commit());
+                currentFamilyBatch = db.batch();
+                familyOpCount = 0;
+            }
+        });
+        if (familyOpCount > 0) {
             familyBatches.push(currentFamilyBatch.commit());
-            currentFamilyBatch = db.batch();
-            familyOpCount = 0;
         }
-    });
-    if (familyOpCount > 0) {
-        familyBatches.push(currentFamilyBatch.commit());
+        await Promise.all(familyBatches);
     }
-    await Promise.all(familyBatches);
 
     // 2. Delete tithe logs for this Bial in this Year
+    // This happens regardless of year (cleanup logs for selected year)
     const logsQuery = db.collection('titheLogs')
         .where('year', '==', year)
         .where('upaBial', '==', bialName);
