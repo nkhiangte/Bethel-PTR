@@ -146,32 +146,73 @@ const getTitheLogRef = (year: number, month: string, familyId: string) => {
 };
 
 export const fetchFamilies = async (year: number, month: string, upaBial: string): Promise<FamilyWithTithe[]> => {
-    // Fix: Use v8 compat syntax
-    const familiesQuery = db.collection('families').where('currentBial', '==', upaBial);
-    const familiesSnapshot = await familiesQuery.get();
+    const familiesRef = db.collection('families');
+    const titheLogsRef = db.collection('titheLogs');
+    const currentYear = new Date().getFullYear();
 
-    const familiesData: Family[] = familiesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Family));
+    const familyIdsInBial = new Set<string>();
+    const titheDataMap = new Map<string, Tithe>(); // Map familyId to its tithe for the month
 
-    const familiesWithTithe: FamilyWithTithe[] = [];
+    // 1. Get families based on existing tithe logs for the specific year, month, and upaBial
+    const logsQuery = titheLogsRef
+        .where('year', '==', year)
+        .where('month', '==', month)
+        .where('upaBial', '==', upaBial);
+    const logsSnapshot = await logsQuery.get();
 
-    for (const family of familiesData) {
-        const titheLogRef = getTitheLogRef(year, month, family.id);
-        // Fix: Use v8 compat get()
-        const titheDoc = await titheLogRef.get();
-        
-        let tithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
-        if (titheDoc.exists) {
-            tithe = titheDoc.data()!.tithe as Tithe;
-        }
+    logsSnapshot.forEach(doc => {
+        const data = doc.data();
+        familyIdsInBial.add(data.familyId);
+        titheDataMap.set(data.familyId, data.tithe as Tithe);
+    });
 
-        familiesWithTithe.push({
+    // 2. If it's the current year, also include families currently assigned to this upaBial,
+    // even if they haven't made a contribution yet this month.
+    if (year === currentYear) {
+        const currentBialFamiliesQuery = familiesRef.where('currentBial', '==', upaBial);
+        const currentBialFamiliesSnapshot = await currentBialFamiliesQuery.get();
+        currentBialFamiliesSnapshot.forEach(doc => {
+            const family = { id: doc.id, ...doc.data() } as Family;
+            // Add to the set only if not already present from tithe logs
+            if (!familyIdsInBial.has(family.id)) {
+                familyIdsInBial.add(family.id);
+            }
+        });
+    }
+
+    const uniqueFamilyIds = Array.from(familyIdsInBial);
+
+    if (uniqueFamilyIds.length === 0) {
+        return []; // No families found for this criteria
+    }
+
+    // 3. Fetch full family documents for all identified family IDs
+    const familiesDocs: Family[] = [];
+    // Firestore `in` query is limited to 10. Need to chunk if more than 10 families.
+    const chunks: string[][] = [];
+    for (let i = 0; i < uniqueFamilyIds.length; i += 10) {
+        chunks.push(uniqueFamilyIds.slice(i, i + 10));
+    }
+
+    for (const chunk of chunks) {
+        const chunkSnapshot = await familiesRef.where(firebase.firestore.FieldPath.documentId(), 'in', chunk).get();
+        chunkSnapshot.forEach(doc => {
+            familiesDocs.push({ id: doc.id, ...doc.data() } as Family);
+        });
+    }
+
+    // 4. Combine family data with their tithe for the specific month
+    const familiesWithTithe: FamilyWithTithe[] = familiesDocs.map(family => {
+        const tithe = titheDataMap.get(family.id) || { pathianRam: 0, ramthar: 0, tualchhung: 0 };
+        return {
             id: family.id,
             name: family.name,
             ipSerialNo: family.ipSerialNo,
             tithe: tithe,
-        });
-    }
-    
+        };
+    });
+
+    // Sort by S/N
     return familiesWithTithe.sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };
 
@@ -482,20 +523,20 @@ export const fetchFamilyYearlyData = async (year: number, familyId: string): Pro
 
 // For BialYearlyFamilyReport.tsx
 export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): Promise<YearlyFamilyTotal[]> => {
-    // 1. Fetch all families for the Upa Bial
-    // Fix: Use v8 compat syntax
-    const familiesQuery = db.collection('families').where('currentBial', '==', upaBial);
-    const familiesSnapshot = await familiesQuery.get();
-    const families = familiesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Family));
+    const familiesRef = db.collection('families');
+    const logsRef = db.collection('titheLogs');
+    const currentYear = new Date().getFullYear();
 
-    // 2. Aggregate tithes for the whole year for this bial
-    const aggregatedTithes: { [familyId: string]: Tithe } = {};
-    // Fix: Use v8 compat syntax
-    const logsQuery = db.collection('titheLogs').where('year', '==', year).where('upaBial', '==', upaBial);
+    // 1. Find all familyIds that made contributions to this 'upaBial' in the given 'year'
+    const logsQuery = logsRef.where('year', '==', year).where('upaBial', '==', upaBial);
     const logsSnapshot = await logsQuery.get();
+
+    const familyIdsInBialForYear = new Set<string>();
+    const aggregatedTithes: { [familyId: string]: Tithe } = {};
 
     logsSnapshot.forEach(doc => {
         const { familyId, tithe } = doc.data();
+        familyIdsInBialForYear.add(familyId);
         if (!aggregatedTithes[familyId]) {
             aggregatedTithes[familyId] = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
         }
@@ -504,8 +545,42 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
         aggregatedTithes[familyId].tualchhung += tithe.tualchhung;
     });
 
-    // 3. Combine family info with aggregated tithes
-    const reportData = families.map(family => {
+    // 2. If it's the current year, also include families whose currentBial matches, even if they haven't contributed yet
+    if (year === currentYear) {
+        const currentBialFamiliesQuery = familiesRef.where('currentBial', '==', upaBial);
+        const currentBialFamiliesSnapshot = await currentBialFamiliesQuery.get();
+        currentBialFamiliesSnapshot.forEach(doc => {
+            const family = { id: doc.id, ...doc.data() } as Family;
+            // Add to the set only if not already present from tithe logs
+            if (!familyIdsInBialForYear.has(family.id)) {
+                familyIdsInBialForYear.add(family.id);
+            }
+        });
+    }
+
+    const uniqueFamilyIds = Array.from(familyIdsInBialForYear);
+
+    if (uniqueFamilyIds.length === 0) {
+        return [];
+    }
+
+    // 3. Fetch full family documents for all identified family IDs
+    const familiesDocs: Family[] = [];
+    // Chunk `in` queries if there are more than 10 unique family IDs
+    const chunks: string[][] = [];
+    for (let i = 0; i < uniqueFamilyIds.length; i += 10) {
+        chunks.push(uniqueFamilyIds.slice(i, i + 10));
+    }
+
+    for (const chunk of chunks) {
+        const chunkSnapshot = await familiesRef.where(firebase.firestore.FieldPath.documentId(), 'in', chunk).get();
+        chunkSnapshot.forEach(doc => {
+            familiesDocs.push({ id: doc.id, ...doc.data() } as Family);
+        });
+    }
+
+    // 4. Combine family info with aggregated tithes
+    const reportData = familiesDocs.map(family => {
         const totalTithe = aggregatedTithes[family.id] || { pathianRam: 0, ramthar: 0, tualchhung: 0 };
         return {
             id: family.id,
