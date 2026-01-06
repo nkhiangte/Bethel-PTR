@@ -1,5 +1,6 @@
 
 
+
 import React, { useMemo } from 'react';
 import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 import { TitheRow } from './TitheRow.tsx';

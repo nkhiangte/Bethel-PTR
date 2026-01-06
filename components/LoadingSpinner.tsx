@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const LoadingSpinner: React.FC<{ message?: string; className?: string }> = ({ message = 'Loading...', className = '' }) => (

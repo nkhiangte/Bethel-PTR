@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as api from '../api.ts';
 import type { BialInfo, BialVawngtu } from '../types.ts';
@@ -116,7 +117,6 @@ const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, o
 interface UpaBialSettingsProps {
     onBack: () => void;
     onGoToDashboard: () => void;
-    // Fix: Add currentYear and years to UpaBialSettingsProps
     currentYear: number;
     years: number[];
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 // Fix: Import firebase v8 compat and auth instance
 import firebase from 'firebase/compat/app';
@@ -93,10 +94,13 @@ export const Auth: React.FC = () => {
     if (!user) {
         switch (view) {
             case 'register':
+                // Fix: Correct prop assignment for onSwitchToLogin
                 return <RegistrationPage onSwitchToLogin={() => setView('login')} />;
             case 'forgotPassword':
+                // Fix: Correct prop assignment for onSwitchToLogin
                 return <ForgotPasswordPage onSwitchToLogin={() => setView('login')} />;
             default:
+                // Fix: Correct prop assignments for onSwitchToRegister and onSwitchToForgotPassword
                 return <LoginPage onSwitchToRegister={() => setView('register')} onSwitchToForgotPassword={() => setView('forgotPassword')} />;
         }
     }

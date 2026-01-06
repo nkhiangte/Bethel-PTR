@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -89,6 +90,14 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
     const handleExportExcel = () => {
         if (families.length === 0) return;
 
+        const headerData = [
+            [`${upaBial} Pathian Ram Thawhlawm Report`],
+            [`Kum: ${year}`],
+        ];
+        headerData.push([]); // Empty row for spacing
+
+        const worksheet = utils.aoa_to_sheet(headerData);
+
         const dataToExport = families.map(family => ({
             'S/N': family.ipSerialNo ?? 'N/A',
             'Chhungkua': family.name,
@@ -107,22 +116,21 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
             'Total': totals.grandTotal,
         };
         
-        const worksheet = utils.json_to_sheet(dataToExport);
+        utils.sheet_add_json(worksheet, dataToExport, { origin: -1, skipHeader: false });
         utils.sheet_add_json(worksheet, [footer], { skipHeader: true, origin: -1 });
 
-        const workbook = utils.book_new();
-        utils.book_append_sheet(workbook, worksheet, "Yearly Family Report");
-
-        writeFile(workbook, `Yearly_Report_${upaBial.replace(/ /g, '_')}_${year}.xlsx`);
+        const workbook = utils.book_new(); // Corrected: added parentheses for function call
+        utils.book_append_sheet(workbook, worksheet, "Bial Yearly Report");
+        writeFile(workbook, `Tithe_Yearly_Report_${upaBial.replace(/ /g, '_')}_${year}.xlsx`);
     };
 
     const handleExportPdf = () => {
-        if (families.length === 0) return;
+        if (!families || families.length === 0) return;
 
-        const doc = new jsPDF();
-        const title = `Yearly Family Report for ${upaBial}`;
+        const doc = new jsPDF({ orientation: 'landscape' });
+    
         autoTable(doc, {
-            body: [[title], [`Year: ${year}`]],
+            body: [[`${upaBial} Yearly Tithe Report`], [`Year: ${year}`]],
             theme: 'plain',
             styles: { fontSize: 14, halign: 'center' },
         });
@@ -155,32 +163,29 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
             footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold' },
             styles: { halign: 'right', lineColor: [203, 213, 225], lineWidth: 0.1 },
             columnStyles: { 
-                0: { halign: 'left', cellWidth: 15 }, 
-                1: { halign: 'left' },
+                0: { halign: 'left', cellWidth: 15 },
+                1: { halign: 'left' }
             },
         });
 
-        const fileName = `PathianRam_Report_${upaBial.replace(/ /g, '_')}_${year}.pdf`;
+        const fileName = `PathianRam_Yearly_Report_${upaBial.replace(/ /g, '_')}_${year}.pdf`;
         doc.save(fileName);
     };
 
-    if (isLoading) return <LoadingSpinner message={`Generating Yearly Report for ${upaBial}...`} />;
+
+    if (isLoading) return <LoadingSpinner message="Generating Bial Yearly Report..." />;
     if (error) return <div className="text-center p-8 bg-red-100 text-red-700 rounded-lg">{error}</div>;
 
     return (
         <div className="printable-area">
-            <div className="hidden print:block text-center mb-4">
-                <h1 className="text-xl font-bold">{`${upaBial} - Kum ${year} Report`}</h1>
-                <h2 className="text-lg">Chhungkaw tin Pathian Ram pek zat kimchang</h2>
-            </div>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 no-print">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                  <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Bial Yearly Family Report</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">Yearly Report for {upaBial}</h2>
                     <p className="text-slate-600">
-                        <span className="font-semibold">{upaBial}</span> for the year <span className="font-semibold">{year}</span>
+                        Summary of family contributions for the year {year}
                     </p>
                 </div>
-                 <div className="flex flex-wrap gap-4">
+                 <div className="flex flex-wrap gap-4 no-print">
                     <button
                         onClick={onGoToDashboard}
                         className="flex items-center gap-2 bg-slate-200 text-slate-800 font-semibold px-4 py-3 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all"
@@ -194,19 +199,19 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
                         onClick={onBack}
                         className="bg-slate-200 text-slate-800 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all"
                     >
-                        &larr; Back to Month Selection
+                        &larr; Back to Data Entry
                     </button>
                     <div className="relative" ref={actionsMenuRef}>
                         <button
                             onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
                             className="flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all shadow-md"
                         >
-                            <span>Actions</span>
+                            <span>Export & Print</span>
                             <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isActionsMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                             </svg>
                         </button>
-                        {isActionsMenuOpen && (
+                         {isActionsMenuOpen && (
                             <div className="absolute right-0 mt-2 w-56 bg-sky-50 rounded-lg shadow-xl z-20 border border-slate-200">
                                 <div className="py-1">
                                     <button onClick={() => { handleExportExcel(); setIsActionsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-100 hover:text-slate-900 transition-colors">
@@ -219,7 +224,7 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
                                     </button>
                                     <button onClick={() => { handlePrint(); setIsActionsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-100 hover:text-slate-900 transition-colors">
                                         <PrintIcon className="w-5 h-5 text-blue-600" />
-                                        <span>Print Report</span>
+                                        <span>Print</span>
                                     </button>
                                 </div>
                             </div>
@@ -229,7 +234,7 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
             </div>
             <div className="overflow-x-auto">
                 {families.length === 0 ? (
-                    <div className="text-center p-8 text-slate-500">No contribution data available for {upaBial} in {year}.</div>
+                    <div className="text-center p-8 text-slate-500">No data available for this Bial for the selected year.</div>
                 ) : (
                     <table className="min-w-full divide-y divide-slate-200 border border-slate-200">
                         <thead className="bg-sky-100">
@@ -244,7 +249,7 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
                         </thead>
                         <tbody className="bg-sky-50 divide-y divide-slate-200">
                             {families.map(family => {
-                                const familyTotal = family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung;
+                                const total = family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung;
                                 return (
                                     <tr key={family.id} className="hover:bg-sky-100/50">
                                         <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-sm text-slate-600">{family.ipSerialNo ?? <span className="text-slate-400 italic">N/A</span>}</td>
@@ -252,13 +257,13 @@ export const BialYearlyFamilyReport: React.FC<BialYearlyFamilyReportProps> = ({ 
                                         <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-sm text-slate-700 text-right">{formatCurrency(family.tithe.pathianRam)}</td>
                                         <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-sm text-slate-700 text-right">{formatCurrency(family.tithe.ramthar)}</td>
                                         <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-sm text-slate-700 text-right">{formatCurrency(family.tithe.tualchhung)}</td>
-                                        <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">{formatCurrency(familyTotal)}</td>
+                                        <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">{formatCurrency(total)}</td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                         <tfoot className="bg-sky-200">
-                            <tr>
+                             <tr>
                                 <td className="px-2 py-4 sm:px-4 text-left text-sm font-extrabold text-slate-900 uppercase" colSpan={2}>Grand Total</td>
                                 <td className="px-2 py-4 sm:px-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">{formatCurrency(totals.pathianRam)}</td>
                                 <td className="px-2 py-4 sm:px-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">{formatCurrency(totals.ramthar)}</td>

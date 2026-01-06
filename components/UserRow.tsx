@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { UserDoc, User } from '../types.ts';
 import { auth } from '../firebase.ts';

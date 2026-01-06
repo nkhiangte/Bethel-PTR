@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 

@@ -1,3 +1,4 @@
+
 export interface Tithe {
   pathianRam: number;
   ramthar: number;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as api from '../api.ts';
 import type { BialInfo, BialVawngtu } from '../types.ts';
@@ -104,12 +105,15 @@ const InternalBialRow: React.FC<InternalBialRowProps> = ({ bialName, bialInfo, o
 interface UpaBialSettingsProps {
     onBack: () => void;
     onGoToDashboard: () => void;
+    // Fix: Add currentYear and years to UpaBialSettingsProps
+    currentYear: number;
+    years: number[];
 }
 
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
-export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoToDashboard }) => {
+export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoToDashboard, currentYear, years }) => {
     const [managementYear, setManagementYear] = useState(currentYear);
     const [upaBials, setUpaBials] = useState<string[]>([]);
     const [allBialInfo, setAllBialInfo] = useState<Map<string, BialInfo>>(new Map());
@@ -215,7 +219,7 @@ export const UpaBialSettings: React.FC<UpaBialSettingsProps> = ({ onBack, onGoTo
                     onChange={(e) => setManagementYear(parseInt(e.target.value, 10))}
                     className="w-full max-w-xs px-4 py-3 text-base text-slate-700 bg-sky-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                 >
-                    {YEARS.map(year => <option key={year} value={year}>{year}</option>)}
+                    {years.map(year => <option key={year} value={year}>{year}</option>)}
                 </select>
                 {isYearLocked && (
                     <p className="mt-2 text-sm text-amber-700">

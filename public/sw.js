@@ -1,3 +1,5 @@
+
+
 const CACHE_NAME = 'bethel-ptr-cache-v6';
 const URLS_TO_CACHE = [
   '/',

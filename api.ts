@@ -1,3 +1,5 @@
+
+
 // Fix: import firebase compat for types and serverTimestamp
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
@@ -69,10 +71,10 @@ export const updateUpaBialsList = async (year: number, newList: string[]): Promi
 };
 
 export const isBialInUse = async (year: number, bialName: string): Promise<boolean> => {
-    // Check against titheLogs for the specified year, not the families collection.
+    // Corrected: Check against titheLogs for the specified year and upaBial
     const logsQuery = db.collection('titheLogs')
                         .where('year', '==', year)
-                        .where('month', '==', bialName)
+                        .where('upaBial', '==', bialName) // Corrected from 'month' == 'bialName'
                         .limit(1);
     const snapshot = await logsQuery.get();
     return !snapshot.empty;
@@ -226,6 +228,17 @@ export const fetchFamilies = async (year: number, month: string, upaBial: string
     // Sort by S/N
     return familiesWithTithe.sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };
+
+// New function to fetch a single family by ID
+export const fetchFamilyById = async (familyId: string): Promise<Family | null> => {
+    const docRef = db.collection('families').doc(familyId);
+    const docSnap = await docRef.get();
+    if (docSnap.exists) {
+        return { id: docSnap.id, ...docSnap.data() } as Family;
+    }
+    return null;
+};
+
 
 export const addFamily = async (year: number, upaBial: string, name: string): Promise<void> => {
     const trimmedName = name.trim();
@@ -463,6 +476,32 @@ export const transferFamily = async (familyId: string, destinationUpaBial: strin
     await familyRef.update({ currentBial: destinationUpaBial });
 };
 
+// New API function for unassigning a family from their current Bial globally
+export const unassignFamilyFromBial = async (familyId: string): Promise<void> => {
+    const familyRef = db.collection('families').doc(familyId);
+    await familyRef.update({ currentBial: null });
+};
+
+// New API function for searching all families
+export const searchAllFamilies = async (searchTerm: string = ''): Promise<Family[]> => {
+    const familiesRef = db.collection('families');
+    const snapshot = await familiesRef.orderBy('name').get(); // Fetch all (or a large initial set) and order by name
+
+    let results: Family[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Family));
+
+    const filterTerm = searchTerm.trim().toLowerCase();
+    if (filterTerm !== '') {
+        // Apply client-side filtering for broader search capabilities (partial match on name, or serial number)
+        results = results.filter(family =>
+            family.name.toLowerCase().includes(filterTerm) ||
+            family.ipSerialNo?.toString().includes(filterTerm)
+        );
+    }
+    
+    return results;
+};
+
+
 // --- REPORTING API ---
 export const fetchMonthlyReport = async (year: number, month: string): Promise<AggregateReportData> => {
     const report: AggregateReportData = {};
@@ -622,7 +661,7 @@ export const updateBialInfo = async (year: number, upaBial: string, data: BialIn
 };
 
 export const fetchAllBialInfo = async (year: number): Promise<Map<string, BialInfo>> => {
-    const infoMap = new Map<string, BialInfo>();
+    const infoMap = new Map<string, BialInfo>(); // Fix: Declare infoMap
     const snapshot = await db.collection('settings').doc(String(year)).collection('bialInfo').get();
     snapshot.forEach(doc => {
         infoMap.set(doc.id, convertToNewBialInfo(doc.data()));

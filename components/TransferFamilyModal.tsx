@@ -1,18 +1,17 @@
 
-
 import React, { useState, useEffect } from 'react';
-import type { FamilyWithTithe } from '../types.ts';
+import type { Family } from '../types.ts'; // Changed from FamilyWithTithe
 
 interface TransferFamilyModalProps {
-    family: FamilyWithTithe;
+    family: Family; // Changed type to Family
     upaBials: string[];
-    currentBial: string;
+    // Removed currentBial prop, as it can be accessed from family.currentBial
     onClose: () => void;
     onTransfer: (familyId: string, destinationBial: string) => void;
-    isYearLocked: boolean; // New prop
+    isYearLocked: boolean; // New prop, will control if transfer is allowed
 }
 
-export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family, upaBials, currentBial, onClose, onTransfer, isYearLocked }) => {
+export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family, upaBials, onClose, onTransfer, isYearLocked }) => {
     const [destinationBial, setDestinationBial] = useState('');
 
     useEffect(() => {
@@ -33,7 +32,8 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
         }
     };
     
-    const availableBials = upaBials.filter(b => b !== currentBial);
+    // Filter out the family's current bial from the destination options
+    const availableBials = upaBials.filter(b => b !== family.currentBial);
 
     return (
         <div 
@@ -52,7 +52,7 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                         <p className="text-amber-600 font-semibold">{family.name}</p>
                         {isYearLocked && (
                             <p className="mt-2 text-sm text-amber-700">
-                                <span className="font-semibold">Note:</span> Family transfers are locked for past years.
+                                <span className="font-semibold">Note:</span> This action is disabled because the current year's data entry is locked.
                             </p>
                         )}
                     </div>
@@ -64,6 +64,18 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
+                        <label htmlFor="currentBial" className="block text-sm font-medium text-slate-700 mb-2">
+                            Current Upa Bial
+                        </label>
+                        <input
+                            id="currentBial"
+                            type="text"
+                            value={family.currentBial || 'Not Assigned'}
+                            readOnly
+                            className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-lg text-black disabled:bg-slate-200 disabled:cursor-not-allowed"
+                        />
+                    </div>
+                    <div>
                         <label htmlFor="destinationBial" className="block text-sm font-medium text-slate-700 mb-2">
                             Transfer to Upa Bial
                         </label>
@@ -73,7 +85,7 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                             onChange={(e) => setDestinationBial(e.target.value)}
                             className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition disabled:bg-slate-200 disabled:cursor-not-allowed"
                             required
-                            disabled={isYearLocked} // Disable select
+                            disabled={isYearLocked} // Disable select if locked
                         >
                             <option value="" disabled>-- Select a destination --</option>
                             {availableBials.map(bial => (
@@ -95,7 +107,7 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                         </button>
                         <button
                             type="submit"
-                            disabled={!destinationBial || isYearLocked} // Disable submit button
+                            disabled={!destinationBial || isYearLocked} // Disable submit button if locked
                             className="w-full sm:w-auto bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
                         >
                             Transfer

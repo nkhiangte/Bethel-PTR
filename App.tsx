@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -20,6 +19,7 @@ import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
 import { UserManagement } from './components/UserManagement.tsx';
 import { UpaBialSettings } from './components/BialManagement.tsx';
+import { AllFamiliesManagement } from './components/AllFamiliesManagement.tsx'; // New import
 import { ImportContributionsModal } from './components/ImportContributionsModal.tsx';
 import { SearchBar } from './components/SearchBar.tsx';
 import { InstallPWAButton } from './components/InstallPWAButton.tsx';
@@ -117,9 +117,9 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [currentBialInfo, setCurrentBialInfo] = useState<BialInfo | null>(null);
   
   const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
-  const [familyToTransfer, setFamilyToTransfer] = useState<FamilyWithTithe | null>(null);
+  const [familyToTransfer, setFamilyToTransfer] = useState<Family | null>(null); // Changed type to Family
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'upaBialSettings'>('entry');
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'upaBialSettings' | 'allFamiliesManagement'>('entry'); // Added allFamiliesManagement
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +128,11 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
   // New state for year archive status
   const [isYearExplicitlyArchived, setIsYearExplicitlyArchived] = useState<boolean>(false);
+
+  // New states for sorting
+  const [sortBy, setSortBy] = useState<'name' | 'serial' | null>(null); 
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
 
   const clearSelections = useCallback(() => {
     setSelectedYear(null);
@@ -142,6 +147,8 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setError(null);
     setSearchTerm('');
     setIsYearExplicitlyArchived(false); // Reset archive status
+    setSortBy(null); // Reset sort
+    setSortOrder('asc'); // Reset sort
   }, []);
 
   // Effect to load Upa Bials list for the CURRENT year for User Management & Registration
@@ -202,6 +209,8 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         try {
           const fetchedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
           setFamilies(fetchedFamilies);
+          setSortBy(null); // Reset sort when new data is fetched
+          setSortOrder('asc');
         } catch (e) {
           console.error(e);
           setError('Could not fetch family data.');
@@ -369,7 +378,6 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const handleSaveTitheModal = useCallback(async (familyId: string, newTithe: Tithe) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f));
-    await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
     handleCloseTitheModal();
   }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
@@ -380,19 +388,51 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
   }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
-  const handleOpenTransferModal = (family: FamilyWithTithe) => setFamilyToTransfer(family);
+  // New handler for opening TransferFamilyModal from components providing Family type (e.g., AllFamiliesManagement)
+  const handleOpenTransferModalFromFamily = useCallback((family: Family) => {
+    setFamilyToTransfer(family);
+  }, []);
+
+  // New handler for opening TransferFamilyModal from components providing FamilyWithTithe type (e.g., TitheTable)
+  const handleOpenTransferModalFromFamilyWithTithe = useCallback(async (familyWithTithe: FamilyWithTithe) => {
+    setIsLoading(true); // Show loading while fetching full family data
+    setError(null);
+    try {
+        const fullFamily = await api.fetchFamilyById(familyWithTithe.id);
+        if (fullFamily) {
+            setFamilyToTransfer(fullFamily);
+        } else {
+            setError(`Could not find complete family data for "${familyWithTithe.name}".`);
+        }
+    } catch (e: any) {
+        setError(`Error fetching family data for transfer: ${e.message}`);
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
   const handleCloseTransferModal = () => {
     setFamilyToTransfer(null);
     setError(null);
   }
 
   const handleTransferFamily = useCallback(async (familyId: string, destinationBial: string) => {
-    if (!selectedYear || !selectedUpaBial || isDataEntryLocked) return;
+    // Note: isDataEntryLocked is checked here, but TransferFamilyModal itself receives isYearLocked={false}
+    // from App.tsx, allowing transfers regardless of the selected data entry year in the main view.
+    // This logic ensures that if the main view *itself* is locked (e.g., in a past year's context),
+    // and a user somehow tries to initiate a transfer *from that view*, it's prevented.
+    // However, the AllFamiliesManagement view explicitly sets isYearLocked={false} for its modal.
+    if (isDataEntryLocked) return; 
+
     setError(null);
     setIsLoading(true);
     try {
         await api.transferFamily(familyId, destinationBial);
-        setFamilies(prev => prev.filter(f => f.id !== familyId));
+        // If transfer is done from the specific bial view, update its family list.
+        if (selectedUpaBial === familyToTransfer?.currentBial) { // Use familyToTransfer.currentBial to check source
+            setFamilies(prev => prev.filter(f => f.id !== familyId));
+        }
         handleCloseTransferModal();
         alert(`Family has been successfully transferred to ${destinationBial}.`);
     } catch (e: any) {
@@ -400,11 +440,13 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     } finally {
         setIsLoading(false);
     }
-  }, [selectedYear, selectedUpaBial, isDataEntryLocked]);
+  }, [isDataEntryLocked, selectedUpaBial, familyToTransfer]); // Added isDataEntryLocked to dependencies
   
   const handleBackFromTitheTable = useCallback(() => {
     setSelectedMonth(null);
     setSearchTerm('');
+    setSortBy(null); // Reset sort when going back
+    setSortOrder('asc'); // Reset sort when going back
   }, []);
 
   const handleViewFamilyReport = useCallback((family: {id: string, name: string}) => {
@@ -418,17 +460,60 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     return new Intl.NumberFormat('en-US', { style: 'decimal' }).format(value);
   };
   
-  const filteredFamilies = useMemo(() => {
-    if (!searchTerm) {
-        return families;
+  const handleSort = (criteria: 'name' | 'serial') => {
+    if (sortBy === criteria) {
+        setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+        setSortBy(criteria);
+        setSortOrder('asc'); // Default to ascending when changing criteria
     }
-    return families.filter(family =>
+  };
+
+  const sortedFamilies = useMemo(() => {
+    let currentFamilies = [...families]; // Create a mutable copy
+
+    if (sortBy === 'name') {
+        currentFamilies.sort((a, b) => {
+            const nameA = a.name.toLowerCase();
+            const nameB = b.name.toLowerCase();
+            if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
+            if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+    } else if (sortBy === 'serial') {
+        currentFamilies.sort((a, b) => {
+            const serialA = a.ipSerialNo ?? Infinity; // Treat null serial numbers as largest
+            const serialB = b.ipSerialNo ?? Infinity;
+
+            if (serialA !== serialB) {
+                return sortOrder === 'asc' ? serialA - serialB : serialB - serialA;
+            }
+            // Tie-breaker: sort by name if serial numbers are the same (or both null)
+            const nameA = a.name.toLowerCase();
+            const nameB = b.name.toLowerCase();
+            if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
+            if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+    // If sortBy is null, the order is naturally from fetchFamilies (S/N then Name)
+    return currentFamilies;
+  }, [families, sortBy, sortOrder]);
+
+  const filteredAndSortedFamilies = useMemo(() => {
+    const familiesToFilter = sortedFamilies; // Use the already sorted list
+
+    if (!searchTerm) {
+        return familiesToFilter;
+    }
+    return familiesToFilter.filter(family =>
         family.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [families, searchTerm]);
+  }, [sortedFamilies, searchTerm]);
+
 
   const handleExportBialExcel = () => {
-        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredFamilies.length === 0) return;
+        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredAndSortedFamilies.length === 0) return;
 
         const headerData = [
             [`${selectedUpaBial} Pathian Ram Thawhlawm`],
@@ -442,7 +527,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
         const worksheet = utils.aoa_to_sheet(headerData);
 
-        const dataToExport = filteredFamilies.map(family => ({
+        const dataToExport = filteredAndSortedFamilies.map(family => ({
             'S/N': family.ipSerialNo ?? 'N/A',
             'Chhungkua': family.name,
             'Pathian Ram': family.tithe.pathianRam,
@@ -451,7 +536,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
             'Total': family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung,
         }));
         
-        const totals = filteredFamilies.reduce((acc, f) => {
+        const totals = filteredAndSortedFamilies.reduce((acc, f) => {
             acc.pathianRam += f.tithe.pathianRam;
             acc.ramthar += f.tithe.ramthar;
             acc.tualchhung += f.tithe.tualchhung;
@@ -478,7 +563,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     };
 
     const handleExportBialPdf = () => {
-        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredFamilies.length === 0) return;
+        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredAndSortedFamilies.length === 0) return;
 
         const doc = new jsPDF();
         const vawngtuText = (currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0)
@@ -492,7 +577,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         });
 
         const head = [['S/N', 'Chhungkua', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
-        const body = filteredFamilies.map(f => [
+        const body = filteredAndSortedFamilies.map(f => [
             f.ipSerialNo ?? 'N/A',
             f.name,
             formatCurrency(f.tithe.pathianRam),
@@ -501,7 +586,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
             formatCurrency(f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung),
         ]);
 
-        const totals = filteredFamilies.reduce((acc, f) => {
+        const totals = filteredAndSortedFamilies.reduce((acc, f) => {
             acc.pathianRam += f.tithe.pathianRam;
             acc.ramthar += f.tithe.ramthar;
             acc.tualchhung += f.tithe.tualchhung;
@@ -533,7 +618,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         });
 
         const monthAbbreviation = selectedMonth.substring(0, 3);
-        const fileName = `PathianRam_${selectedUpaBial.replace(/ /g, '_')}_${monthAbbreviation}_${selectedYear}.pdf`;
+        const fileName = `PathianRam_${selectedUpaBial.replace(/ /g, '_')}_${selectedMonth}_${selectedYear}.pdf`;
         doc.save(fileName);
     };
 
@@ -608,8 +693,18 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
         return <UpaBialSettings
                     onBack={() => setView('entry')}
                     onGoToDashboard={clearSelections}
-                    currentYear={currentYear}
-                    years={YEARS}
+                    currentYear={currentYear} 
+                    years={YEARS} 
+                />
+    }
+
+    if (view === 'allFamiliesManagement') { // New render logic for AllFamiliesManagement
+        return <AllFamiliesManagement
+                    onBack={() => setView('entry')}
+                    onGoToDashboard={clearSelections}
+                    upaBials={currentYearBials} // Pass current year bials for transfers
+                    currentYear={currentYear} // Pass current year for reports
+                    onOpenTransferModal={handleOpenTransferModalFromFamily} // Use the new specific handler
                 />
     }
 
@@ -699,21 +794,42 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 </div>
             </div>
 
+            {/* Search and Sort Controls */}
             {families.length > 0 && (
-                <div className="mb-4 no-print">
-                    <SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
-                </div>
+                <>
+                    <div className="mb-4 no-print">
+                        <SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-4 no-print">
+                        <button
+                            onClick={() => handleSort('serial')}
+                            className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
+                                        ${sortBy === 'serial' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'}`}
+                        >
+                            Sort by S/N
+                            {sortBy === 'serial' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                        </button>
+                        <button
+                            onClick={() => handleSort('name')}
+                            className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
+                                        ${sortBy === 'name' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'}`}
+                        >
+                            Sort by Name
+                            {sortBy === 'name' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                        </button>
+                    </div>
+                </>
             )}
 
             <TitheTable
-                families={filteredFamilies}
+                families={filteredAndSortedFamilies}
                 isLoading={isLoading}
                 onTitheChange={handleTitheChange}
                 onRemoveFamily={handleRemoveFamily}
                 onUpdateFamilyName={handleUpdateFamilyName}
                 onUpdateIpSerialNo={handleUpdateIpSerialNo}
                 onOpenTitheModal={handleOpenTitheModal}
-                onOpenTransferModal={handleOpenTransferModal}
+                onOpenTransferModal={handleOpenTransferModalFromFamilyWithTithe}
                 onClearTithe={handleClearTithe}
                 onViewFamilyReport={handleViewFamilyReport}
                 currentYear={currentYear}
@@ -721,7 +837,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 isDataEntryLocked={isDataEntryLocked} // Pass to table
             />
 
-            {filteredFamilies.length > 0 && (
+            {filteredAndSortedFamilies.length > 0 && (
                 <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4 no-print">
                     <span className="text-slate-600 text-sm">Export current view:</span>
                     <button
@@ -761,6 +877,12 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                         className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all text-sm"
                     >
                         Manage Users
+                    </button>
+                    <button
+                        onClick={() => setView('allFamiliesManagement')} // New button
+                        className="bg-sky-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all text-sm"
+                    >
+                        Manage All Families
                     </button>
                 </div>
             )}
@@ -815,14 +937,13 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
               isYearLocked={isDataEntryLocked}
           />
       )}
-      {familyToTransfer && selectedUpaBial && (
+      {familyToTransfer && ( // Changed from selectedUpaBial as currentBial is on family object
           <TransferFamilyModal
               family={familyToTransfer}
               upaBials={upaBials}
-              currentBial={selectedUpaBial}
               onClose={handleCloseTransferModal}
               onTransfer={handleTransferFamily}
-              isYearLocked={isDataEntryLocked}
+              isYearLocked={false} // Transfer should always be allowed for currently active families, regardless of selectedYear
           />
       )}
 

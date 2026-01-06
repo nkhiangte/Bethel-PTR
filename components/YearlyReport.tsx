@@ -70,7 +70,7 @@ export const YearlyReport: React.FC<YearlyReportProps> = ({ data, upaBials, year
             totals.pathianRam += bialData.pathianRam;
             totals.ramthar += bialData.ramthar;
             totals.tualchhung += bialData.tualchhung;
-            totals.total += bialData.total;
+            totals.total += bialData.pathianRam + bialData.ramthar + bialData.tualchhung;
         });
         return totals;
     }, [data]);
