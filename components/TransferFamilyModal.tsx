@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import type { FamilyWithTithe } from '../types.ts';
 
@@ -8,9 +9,10 @@ interface TransferFamilyModalProps {
     currentBial: string;
     onClose: () => void;
     onTransfer: (familyId: string, destinationBial: string) => void;
+    isYearLocked: boolean; // New prop
 }
 
-export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family, upaBials, currentBial, onClose, onTransfer }) => {
+export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family, upaBials, currentBial, onClose, onTransfer, isYearLocked }) => {
     const [destinationBial, setDestinationBial] = useState('');
 
     useEffect(() => {
@@ -25,6 +27,7 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isYearLocked) return; // Prevent submission if locked
         if (destinationBial) {
             onTransfer(family.id, destinationBial);
         }
@@ -47,6 +50,11 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800">Transfer Family</h2>
                         <p className="text-amber-600 font-semibold">{family.name}</p>
+                        {isYearLocked && (
+                            <p className="mt-2 text-sm text-amber-700">
+                                <span className="font-semibold">Note:</span> Family transfers are locked for past years.
+                            </p>
+                        )}
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1" aria-label="Close modal">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -63,8 +71,9 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                             id="destinationBial"
                             value={destinationBial}
                             onChange={(e) => setDestinationBial(e.target.value)}
-                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition disabled:bg-slate-200 disabled:cursor-not-allowed"
                             required
+                            disabled={isYearLocked} // Disable select
                         >
                             <option value="" disabled>-- Select a destination --</option>
                             {availableBials.map(bial => (
@@ -86,7 +95,7 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                         </button>
                         <button
                             type="submit"
-                            disabled={!destinationBial}
+                            disabled={!destinationBial || isYearLocked} // Disable submit button
                             className="w-full sm:w-auto bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
                         >
                             Transfer

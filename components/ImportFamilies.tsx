@@ -1,4 +1,5 @@
 
+
 import React, { useRef } from 'react';
 import { read, utils } from 'xlsx';
 
@@ -9,6 +10,7 @@ interface FamilyImportData {
 
 interface ImportFamiliesProps {
   onImport: (families: FamilyImportData[], onResult: (message: string) => void) => void;
+  isDisabled: boolean; // New prop
 }
 
 const ExcelIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -19,10 +21,11 @@ const ExcelIcon: React.FC<{className?: string}> = ({ className }) => (
 );
 
 
-export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport }) => {
+export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisabled }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDisabled) return; // Prevent file processing if disabled
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -81,6 +84,7 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport }) => {
   };
 
   const handleButtonClick = () => {
+    if (isDisabled) return; // Prevent click if disabled
     fileInputRef.current?.click();
   };
 
@@ -94,11 +98,13 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport }) => {
         accept=".xlsx, .xls, .csv"
         aria-hidden="true"
         tabIndex={-1}
+        disabled={isDisabled} // Disable file input
       />
       <button
         type="button"
         onClick={handleButtonClick}
-        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md"
+        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed disabled:scale-100"
+        disabled={isDisabled} // Disable button
       >
         <ExcelIcon className="w-5 h-5" />
         Import Families

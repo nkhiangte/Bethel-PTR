@@ -1,8 +1,10 @@
+
 import React from 'react';
 
 interface MonthSelectionProps {
   months: string[];
   year: number;
+  currentYear: number; // New prop
   onSelectMonth: (month: string) => void;
   onBack?: () => void;
   onGoToDashboard: () => void;
@@ -15,7 +17,9 @@ const UploadIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, onSelectMonth, onBack, onGoToDashboard, onOpenImportModal }) => {
+export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, currentYear, onSelectMonth, onBack, onGoToDashboard, onOpenImportModal }) => {
+  const isImportDisabled = year < currentYear; // Determine if import should be disabled
+
   return (
     <div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
@@ -34,8 +38,9 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({ months, year, on
             <div className="flex flex-col sm:flex-row flex-shrink-0 gap-2">
                  <button
                     onClick={onOpenImportModal}
-                    className="flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all text-sm"
+                    className="flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all text-sm disabled:bg-slate-400 disabled:cursor-not-allowed"
                     aria-label="Import Contributions from file"
+                    disabled={isImportDisabled} // Disable button if it's a past year
                 >
                     <UploadIcon className="w-5 h-5" />
                     <span className="hidden sm:inline">Import Contributions</span>

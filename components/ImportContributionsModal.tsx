@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { read, utils } from 'xlsx';
 import type { Tithe } from '../types.ts';
 import { LoadingSpinner } from './LoadingSpinner.tsx';
@@ -27,6 +28,7 @@ interface ImportContributionsModalProps {
     selectedBial: string | null; // Pre-selected for non-admins
     onClose: () => void;
     onImport: (year: number, month: string, upaBial: string, data: ContributionImportData[]) => Promise<ImportResult>;
+    isYearLocked: boolean; // New prop
 }
 
 const ExcelIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -36,7 +38,7 @@ const ExcelIcon: React.FC<{className?: string}> = ({ className }) => (
 );
 
 
-export const ImportContributionsModal: React.FC<ImportContributionsModalProps> = ({ year, upaBials, selectedBial, onClose, onImport }) => {
+export const ImportContributionsModal: React.FC<ImportContributionsModalProps> = ({ year, upaBials, selectedBial, onClose, onImport, isYearLocked }) => {
     const [targetMonth, setTargetMonth] = useState('');
     const [targetBial, setTargetBial] = useState(selectedBial || '');
     const [fileData, setFileData] = useState<ContributionImportData[] | null>(null);
@@ -48,7 +50,24 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Disable targetBial if selectedBial is provided (i.e., non-admin user) or if year is locked
+    const isTargetBialSelectDisabled = selectedBial !== null || isYearLocked;
+
+    useEffect(() => {
+        // Clear file data and result/error messages when modal opens or year changes to locked
+        if (isYearLocked) {
+            setFileData(null);
+            setFileName('');
+            setResult(null);
+            setError("Cannot import contributions for past years.");
+            setIsLoading(false);
+        } else if (error === "Cannot import contributions for past years.") {
+             setError(null); // Clear the specific error if year is no longer locked
+        }
+    }, [isYearLocked, error]);
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (isYearLocked) return; // Prevent file processing if disabled
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -121,7 +140,7 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
     };
 
     const handleImportClick = async () => {
-        if (!fileData || !targetMonth || !targetBial) return;
+        if (!fileData || !targetMonth || !targetBial || isYearLocked) return;
         
         setIsLoading(true);
         setError(null);
@@ -152,6 +171,11 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800">Import Contributions</h2>
                         <p className="text-slate-500">Bulk upload tithe data for {year} from an Excel file.</p>
+                        {isYearLocked && (
+                            <p className="mt-2 text-sm text-amber-700">
+                                <span className="font-semibold">Note:</span> Importing contributions is disabled for past years.
+                            </p>
+                        )}
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1" aria-label="Close modal">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -164,7 +188,7 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                         {!selectedBial && (
                             <div>
                                 <label htmlFor="import-bial" className="block text-sm font-medium text-slate-700 mb-2">Upa Bial</label>
-                                <select id="import-bial" value={targetBial} onChange={e => setTargetBial(e.target.value)} className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
+                                <select id="import-bial" value={targetBial} onChange={e => setTargetBial(e.target.value)} className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-200 disabled:cursor-not-allowed" disabled={isTargetBialSelectDisabled}>
                                     <option value="" disabled>Select a Bial</option>
                                     {upaBials.map(b => <option key={b} value={b}>{b}</option>)}
                                 </select>
@@ -172,7 +196,7 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                         )}
                         <div>
                             <label htmlFor="import-month" className="block text-sm font-medium text-slate-700 mb-2">Month</label>
-                            <select id="import-month" value={targetMonth} onChange={e => setTargetMonth(e.target.value)} className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
+                            <select id="import-month" value={targetMonth} onChange={e => setTargetMonth(e.target.value)} className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-200 disabled:cursor-not-allowed" disabled={isYearLocked}>
                                 <option value="" disabled>Select a Month</option>
                                 {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
@@ -186,9 +210,9 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                            <div className="space-y-1 text-center">
                                 <ExcelIcon className="mx-auto h-12 w-12 text-slate-400" />
                                 <div className="flex text-sm text-slate-600">
-                                    <label htmlFor="file-upload" className="relative cursor-pointer bg-sky-50 rounded-md font-medium text-amber-600 hover:text-amber-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-amber-500">
+                                    <label htmlFor="file-upload" className="relative cursor-pointer bg-sky-50 rounded-md font-medium text-amber-600 hover:text-amber-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-amber-500 disabled:text-slate-500 disabled:cursor-not-allowed">
                                         <span>Upload a file</span>
-                                        <input id="file-upload" name="file-upload" type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="sr-only" />
+                                        <input id="file-upload" name="file-upload" type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="sr-only" disabled={isYearLocked}/>
                                     </label>
                                     <p className="pl-1">or drag and drop</p>
                                 </div>
@@ -231,7 +255,7 @@ export const ImportContributionsModal: React.FC<ImportContributionsModalProps> =
                         <button type="button" onClick={onClose} className="w-full sm:w-auto bg-sky-100 text-slate-700 font-semibold px-6 py-3 rounded-lg hover:bg-slate-200 transition-all">
                             Close
                         </button>
-                        <button type="button" onClick={handleImportClick} disabled={!fileData || !targetMonth || !targetBial || isLoading} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed">
+                        <button type="button" onClick={handleImportClick} disabled={!fileData || !targetMonth || !targetBial || isLoading || isYearLocked} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed">
                             {isLoading ? <><LoadingSpinner message='' className='p-0'/> <span>Importing...</span></> : 'Import Data'}
                         </button>
                     </div>

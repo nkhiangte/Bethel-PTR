@@ -258,9 +258,11 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [view, selectedYear]);
 
+  // Determine if data entry/modification should be locked for the selected year
+  const isDataEntryLocked = selectedYear !== null && selectedYear < currentYear;
 
   const handleAddFamily = useCallback(async (name: string) => {
-    if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -272,10 +274,10 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
    const handleImportFamilies = useCallback(async (familiesToImport: { name: string; ipSerialNo: number | null }[], onResult: (message: string) => void) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -295,9 +297,12 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     } finally {
         setIsLoading(false);
     }
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleImportContributions = async (year: number, month: string, upaBial: string, data: any[]) => {
+    if (isDataEntryLocked) {
+      throw new Error("Cannot import contributions for past years.");
+    }
     try {
         const result = await api.importContributions(year, month, upaBial, data);
         // After successful import, refresh the family data for the current view
@@ -313,7 +318,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   };
 
   const handleTitheChange = useCallback(async (familyId: string, category: TitheCategory, value: number) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     
     const updatedFamilies = families.map(f => {
         if (f.id === familyId) {
@@ -324,43 +329,43 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setFamilies(updatedFamilies);
     
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, category, value);
-  }, [selectedYear, selectedMonth, selectedUpaBial, families]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, families, isDataEntryLocked]);
   
   const handleRemoveFamily = useCallback(async (familyId: string, year: number) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
     await api.removeFamily(familyId, year);
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleUpdateFamilyName = useCallback(async (familyId: string, name: string) => {
-    if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     const trimmedName = name.trim();
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f));
     await api.updateFamilyDetails(familyId, { name: trimmedName });
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleUpdateIpSerialNo = useCallback(async (familyId: string, newSerial: number | null) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f));
     await api.updateFamilyDetails(familyId, { ipSerialNo: newSerial });
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleOpenTitheModal = (family: FamilyWithTithe) => setFamilyForModal(family);
   const handleCloseTitheModal = () => setFamilyForModal(null);
 
   const handleSaveTitheModal = useCallback(async (familyId: string, newTithe: Tithe) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f));
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
     handleCloseTitheModal();
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleClearTithe = useCallback(async (familyId: string) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     const newTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
     setFamilies(prev => prev.map(f => (f.id === familyId ? { ...f, tithe: newTithe } : f)));
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
-  }, [selectedYear, selectedMonth, selectedUpaBial]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleOpenTransferModal = (family: FamilyWithTithe) => setFamilyToTransfer(family);
   const handleCloseTransferModal = () => {
@@ -369,7 +374,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
   }
 
   const handleTransferFamily = useCallback(async (familyId: string, destinationBial: string) => {
-    if (!selectedYear || !selectedUpaBial) return;
+    if (!selectedYear || !selectedUpaBial || isDataEntryLocked) return;
     setError(null);
     setIsLoading(true);
     try {
@@ -382,7 +387,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     } finally {
         setIsLoading(false);
     }
-  }, [selectedYear, selectedUpaBial]);
+  }, [selectedYear, selectedUpaBial, isDataEntryLocked]);
   
   const handleBackFromTitheTable = useCallback(() => {
     setSelectedMonth(null);
@@ -464,7 +469,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
         const doc = new jsPDF();
         const vawngtuText = (currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0)
-            ? ` (Vawngtu: ${currentBialInfo.vawngtu.map(v => v.name).join(', ')})`
+            ? ` (Vawngtu: ${currentBialInfo.vawngtu.map(v => v.name).join(', ')} )`
             : '';
         const title = `${selectedUpaBial.replace('Upa ', '')} Pathian Ram${vawngtuText}`;
         autoTable(doc, {
@@ -615,6 +620,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
          return <MonthSelection 
                     months={MONTHS} 
                     year={selectedYear} 
+                    currentYear={currentYear}
                     onSelectMonth={setSelectedMonth} 
                     onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)}
                     onGoToDashboard={clearSelections}
@@ -656,14 +662,15 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
             <div className="flex flex-col-reverse md:flex-row gap-6 mb-4 no-print">
                 <div className="flex-grow">
-                    <AddFamilyForm onAddFamily={handleAddFamily} />
+                    <AddFamilyForm onAddFamily={handleAddFamily} isDisabled={isDataEntryLocked} />
                 </div>
                  <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2">
-                    <ImportFamilies onImport={handleImportFamilies} />
+                    <ImportFamilies onImport={handleImportFamilies} isDisabled={isDataEntryLocked} />
                     <button
                         type="button"
                         onClick={() => setIsImportContributionsModalOpen(true)}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
+                        disabled={isDataEntryLocked}
                     >
                         <UploadIcon className="w-5 h-5" />
                         Import Contributions
@@ -775,6 +782,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
               selectedBial={selectedUpaBial}
               onClose={() => setIsImportContributionsModalOpen(false)}
               onImport={handleImportContributions}
+              isYearLocked={isDataEntryLocked}
           />
       )}
       {familyForModal && (
@@ -782,6 +790,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
               family={familyForModal} 
               onClose={handleCloseTitheModal} 
               onSave={handleSaveTitheModal} 
+              isYearLocked={isDataEntryLocked}
           />
       )}
       {familyToTransfer && selectedUpaBial && (
@@ -791,6 +800,7 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
               currentBial={selectedUpaBial}
               onClose={handleCloseTransferModal}
               onTransfer={handleTransferFamily}
+              isYearLocked={isDataEntryLocked}
           />
       )}
 

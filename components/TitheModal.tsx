@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { FamilyWithTithe, Tithe } from '../types.ts';
 
@@ -5,6 +6,7 @@ interface TitheModalProps {
     family: FamilyWithTithe;
     onClose: () => void;
     onSave: (familyId: string, newTithe: Tithe) => void;
+    isYearLocked: boolean; // New prop
 }
 
 const formatCurrency = (value: number) => {
@@ -12,7 +14,7 @@ const formatCurrency = (value: number) => {
 };
 
 
-export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave }) => {
+export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave, isYearLocked }) => {
     const [tithe, setTithe] = useState<Tithe>({ ...family.tithe });
 
     const pathianRamRef = useRef<HTMLInputElement>(null);
@@ -20,8 +22,10 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
     const tualchhungRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        pathianRamRef.current?.focus();
-        pathianRamRef.current?.select();
+        if (!isYearLocked) { // Only focus if not locked
+            pathianRamRef.current?.focus();
+            pathianRamRef.current?.select();
+        }
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -30,9 +34,10 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onClose]);
+    }, [onClose, isYearLocked]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (isYearLocked) return; // Prevent changes if locked
         const { name, value } = e.target;
         setTithe(prev => ({
             ...prev,
@@ -42,11 +47,12 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isYearLocked) return; // Prevent submission if locked
         onSave(family.id, tithe);
     };
 
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key !== 'Enter') return;
+        if (isYearLocked || e.key !== 'Enter') return; // Prevent keydown actions if locked
         
         e.preventDefault();
         const targetId = e.currentTarget.id;
@@ -81,6 +87,11 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800">Sawm a Pakhat Chhunluhna</h2>
                         <p className="text-amber-600 font-semibold">{family.name}</p>
+                        {isYearLocked && (
+                            <p className="mt-2 text-sm text-amber-700">
+                                <span className="font-semibold">Note:</span> Contributions for past years are locked and cannot be modified.
+                            </p>
+                        )}
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1" aria-label="Close modal">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -103,7 +114,8 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
                             onKeyDown={handleInputKeyDown}
                             min="0"
                             placeholder="0"
-                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black disabled:bg-slate-200 disabled:cursor-not-allowed"
+                            disabled={isYearLocked} // Disable input
                         />
                     </div>
                      <div>
@@ -120,7 +132,8 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
                             onKeyDown={handleInputKeyDown}
                             min="0"
                             placeholder="0"
-                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black disabled:bg-slate-200 disabled:cursor-not-allowed"
+                            disabled={isYearLocked} // Disable input
                         />
                     </div>
                      <div>
@@ -137,7 +150,8 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
                             onKeyDown={handleInputKeyDown}
                             min="0"
                             placeholder="0"
-                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black"
+                            className="w-full px-4 py-3 bg-sky-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-black disabled:bg-slate-200 disabled:cursor-not-allowed"
+                            disabled={isYearLocked} // Disable input
                         />
                     </div>
 
@@ -161,7 +175,8 @@ export const TitheModal: React.FC<TitheModalProps> = ({ family, onClose, onSave 
                         </button>
                         <button
                             type="submit"
-                            className="w-full sm:w-auto bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md"
+                            className="w-full sm:w-auto bg-amber-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
+                            disabled={isYearLocked} // Disable button
                         >
                             Save Changes
                         </button>
