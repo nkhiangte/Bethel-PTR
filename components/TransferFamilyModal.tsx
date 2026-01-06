@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { FamilyWithTithe } from '../types.ts';
 
@@ -71,7 +72,7 @@ export const TransferFamilyModal: React.FC<TransferFamilyModalProps> = ({ family
                             ))}
                         </select>
                          <p className="mt-2 text-xs text-slate-500">
-                            This will move the family and all their contribution data for the entire year to the selected Upa Bial.
+                            This will update the family's *current* Upa Bial assignment. Their historical contribution records will retain the Upa Bial they belonged to at the time of contribution.
                         </p>
                     </div>
 

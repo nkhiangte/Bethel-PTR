@@ -326,10 +326,10 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, category, value);
   }, [selectedYear, selectedMonth, selectedUpaBial, families]);
   
-  const handleRemoveFamily = useCallback(async (familyId: string) => {
+  const handleRemoveFamily = useCallback(async (familyId: string, year: number) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial) return;
     setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
-    await api.removeFamily(familyId);
+    await api.removeFamily(familyId, year);
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
   const handleUpdateFamilyName = useCallback(async (familyId: string, name: string) => {
@@ -688,6 +688,8 @@ const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 onOpenTransferModal={handleOpenTransferModal}
                 onClearTithe={handleClearTithe}
                 onViewFamilyReport={handleViewFamilyReport}
+                currentYear={currentYear}
+                selectedYear={selectedYear}
             />
 
             {filteredFamilies.length > 0 && (

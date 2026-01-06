@@ -1,4 +1,5 @@
 
+
 import React, { useMemo } from 'react';
 import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 import { TitheRow } from './TitheRow.tsx';
@@ -8,13 +9,15 @@ interface TitheTableProps {
   families: FamilyWithTithe[];
   isLoading: boolean;
   onTitheChange: (familyId: string, category: TitheCategory, value: number) => void;
-  onRemoveFamily: (familyId: string) => void;
+  onRemoveFamily: (familyId: string, year: number) => void; // Updated signature
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: FamilyWithTithe) => void;
   onOpenTransferModal: (family: FamilyWithTithe) => void;
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string; name: string}) => void;
+  currentYear: number; // New prop
+  selectedYear: number; // New prop
 }
 
 const formatCurrency = (value: number) => {
@@ -31,7 +34,9 @@ export const TitheTable: React.FC<TitheTableProps> = ({
     onOpenTitheModal,
     onOpenTransferModal,
     onClearTithe,
-    onViewFamilyReport
+    onViewFamilyReport,
+    currentYear, // Destructure new prop
+    selectedYear // Destructure new prop
 }) => {
     
   const { totals, payingFamiliesCount } = useMemo(() => {
@@ -114,6 +119,8 @@ export const TitheTable: React.FC<TitheTableProps> = ({
                 onClearTithe={onClearTithe}
                 onViewFamilyReport={onViewFamilyReport}
                 formatCurrency={formatCurrency}
+                currentYear={currentYear} // Pass new prop
+                selectedYear={selectedYear} // Pass new prop
               />
             ))
           )}

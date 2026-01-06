@@ -385,16 +385,17 @@ export const updateFamilyDetails = async (familyId: string, data: { name?: strin
     await familyRef.update(data);
 };
 
-export const removeFamily = async (familyId: string): Promise<void> => {
-    // Fix: Use v8 compat syntax
+export const removeFamily = async (familyId: string, year: number): Promise<void> => {
     const batch = db.batch();
     
-    // Delete the family document
+    // 1. Update the family document's currentBial to null
+    // This effectively removes them from any active Bial assignment going forward.
     const familyRef = db.collection('families').doc(familyId);
-    batch.delete(familyRef);
-    
-    // Find and delete all associated tithe logs
-    const logsQuery = db.collection('titheLogs').where('familyId', '==', familyId);
+    batch.update(familyRef, { currentBial: null });
+
+    // 2. Delete all associated tithe logs *only for the specified year*
+    // This preserves contributions from other years.
+    const logsQuery = db.collection('titheLogs').where('familyId', '==', familyId).where('year', '==', year);
     const logsSnapshot = await logsQuery.get();
     logsSnapshot.forEach(logDoc => {
         batch.delete(logDoc.ref);

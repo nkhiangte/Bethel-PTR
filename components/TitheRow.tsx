@@ -6,7 +6,7 @@ import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 interface TitheRowProps {
   family: FamilyWithTithe;
   onTitheChange: (familyId: string, category: TitheCategory, value: number) => void;
-  onRemoveFamily: (familyId: string) => void;
+  onRemoveFamily: (familyId: string, year: number) => void; // Updated signature
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: FamilyWithTithe) => void;
@@ -14,6 +14,8 @@ interface TitheRowProps {
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string, name: string}) => void;
   formatCurrency: (value: number) => string;
+  currentYear: number; // New prop
+  selectedYear: number; // New prop
 }
 
 // Icons
@@ -59,7 +61,7 @@ const TransferIcon: React.FC<{className?: string}> = ({ className }) => (
         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
         <path d="m14.09 12.41-2.5-2.5.71-.71 1.79 1.8 1.79-1.8.71.71-2.5 2.5zM12 16.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-8c-1.93 0-3.5 1.57-3.5 3.5s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5z" opacity="0"/>
         <path d="M12.79 13.21 11.29 11.71 9.79 13.21 9.08 12.5 11.29 10.29 13.5 12.5Z"/>
-        <path d="M12 7.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5S14.49 7.5 12 7.5zm0 8c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5 3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+        <path d="M12 7.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5S14.49 7.5 12 7.5zm0 8c-1.93 0-3.5-1.57-3.5-3.5s1.57 3.5 3.5 3.5 3.5 1.57 3.5-3.5-1.57-3.5-3.5-3.5z"/>
     </svg>
 );
 
@@ -74,13 +76,18 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     onOpenTransferModal,
     onClearTithe,
     onViewFamilyReport,
-    formatCurrency 
+    formatCurrency,
+    currentYear, // Use new prop
+    selectedYear // Use new prop
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedName, setEditedName] = useState(family.name);
     const [editedSerial, setEditedSerial] = useState(family.ipSerialNo?.toString() ?? '');
 
     const nameInputRef = useRef<HTMLInputElement>(null);
+
+    // Disable actions for past years
+    const isYearLocked = selectedYear < currentYear;
 
     useEffect(() => {
         if (isEditing) {
@@ -90,6 +97,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     }, [isEditing]);
 
     const handleEditClick = () => {
+        if (isYearLocked) return; // Prevent editing if year is locked
         setIsEditing(true);
     };
     
@@ -100,6 +108,8 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     };
     
     const handleSaveClick = () => {
+        if (isYearLocked) return; // Prevent saving if year is locked
+
         const newName = editedName.trim();
         const newSerial = editedSerial.trim() === '' ? null : parseInt(editedSerial, 10);
         
@@ -132,12 +142,15 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     };
     
     const handleDeleteClick = () => {
-        if (window.confirm(`I chiang chiah em, he chhungkua "${family.name}" hi i paih dawn? Thla zawng zawng atanga paih a ni ang a, siam that leh theih a ni tawh lo ang.`)) {
-            onRemoveFamily(family.id);
+        if (isYearLocked) return; // Prevent deletion if year is locked
+
+        if (window.confirm(`I chiang chiah em, he chhungkua "${family.name}" hi paih i duh takzet em? He chhungkua hi kum ${selectedYear} atanga Upa Bial hrang hrang atanga tihbo (unassigned) a ni ang a, kum ${selectedYear} chhunga an thawhlawm chhunluh zawng zawng pawh paih vek a ni ang. Amaherawhchu, kum hmasa (hlui) zawng zawngah chuan an thawhlawm chhunluh chu a awm hmunah a awm zel ang.`)) {
+            onRemoveFamily(family.id, selectedYear); // Pass selectedYear
         }
     };
     
     const handleClearTitheClick = () => {
+        if (isYearLocked) return; // Prevent clearing if year is locked
          if (window.confirm(`Are you sure you want to reset all tithe contributions for "${family.name}" for this month to zero?`)) {
             onClearTithe(family.id);
         }
@@ -157,6 +170,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                         onKeyDown={handleKeyDown}
                         placeholder="N/A"
                         className="w-20 bg-sky-100 border border-amber-400 rounded-md px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
+                        disabled={isYearLocked} // Disable input for locked years
                     />
                 ) : (
                     family.ipSerialNo ?? <span className="text-slate-400 italic">N/A</span>
@@ -172,23 +186,48 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                         onChange={(e) => setEditedName(e.target.value)}
                         onKeyDown={handleKeyDown}
                         className="w-full bg-sky-100 border border-amber-400 rounded-md px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
+                        disabled={isYearLocked} // Disable input for locked years
                     />
                 ) : (
                     family.name
                 )}
             </td>
             {/* Tithe Amounts */}
-            <td className="px-2 py-2 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td 
+                className={`px-2 py-2 sm:px-3 text-right text-sm text-slate-700 ${isYearLocked ? '' : 'cursor-pointer'}`} 
+                onClick={() => !isYearLocked && onOpenTitheModal(family)} 
+                role="button" 
+                tabIndex={isYearLocked ? -1 : 0}
+                aria-disabled={isYearLocked}
+            >
                 {formatCurrency(family.tithe.pathianRam)}
             </td>
-            <td className="px-2 py-2 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td 
+                className={`px-2 py-2 sm:px-3 text-right text-sm text-slate-700 ${isYearLocked ? '' : 'cursor-pointer'}`} 
+                onClick={() => !isYearLocked && onOpenTitheModal(family)} 
+                role="button" 
+                tabIndex={isYearLocked ? -1 : 0}
+                aria-disabled={isYearLocked}
+            >
                 {formatCurrency(family.tithe.ramthar)}
             </td>
-            <td className="px-2 py-2 sm:px-3 text-right text-sm text-slate-700 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td 
+                className={`px-2 py-2 sm:px-3 text-right text-sm text-slate-700 ${isYearLocked ? '' : 'cursor-pointer'}`} 
+                onClick={() => !isYearLocked && onOpenTitheModal(family)} 
+                role="button" 
+                tabIndex={isYearLocked ? -1 : 0}
+                aria-disabled={isYearLocked}
+            >
                 {formatCurrency(family.tithe.tualchhung)}
             </td>
             {/* Total */}
-            <td className="px-2 py-2 sm:px-3 text-right text-sm font-bold text-slate-900 cursor-pointer" onClick={() => onOpenTitheModal(family)} role="button" tabIndex={0}>
+            <td 
+                className={`px-2 py-2 sm:px-3 text-right text-sm font-bold text-slate-900 ${isYearLocked ? '' : 'cursor-pointer'}`} 
+                onClick={() => !isYearLocked && onOpenTitheModal(family)} 
+                role="button" 
+                tabIndex={isYearLocked ? -1 : 0}
+                aria-disabled={isYearLocked}
+            >
                 {formatCurrency(familyTotal)}
             </td>
             {/* Actions */}
@@ -196,28 +235,28 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                 <div className="flex items-center justify-center gap-1 sm:gap-2">
                     {isEditing ? (
                         <>
-                            <button onClick={handleSaveClick} className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors" title="Save Changes" aria-label="Save family changes">
+                            <button onClick={handleSaveClick} className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors" title="Save Changes" aria-label="Save family changes" disabled={isYearLocked}>
                                 <SaveIcon className="w-5 h-5" />
                             </button>
-                            <button onClick={handleCancelClick} className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors" title="Cancel Edit" aria-label="Cancel editing family">
+                            <button onClick={handleCancelClick} className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors" title="Cancel Edit" aria-label="Cancel editing family" disabled={isYearLocked}>
                                 <CancelIcon className="w-5 h-5" />
                             </button>
                         </>
                     ) : (
                         <>
-                             <button onClick={() => onOpenTransferModal(family)} className="p-2 text-cyan-600 hover:bg-cyan-100 rounded-full transition-colors" title="Transfer Family" aria-label={`Transfer family ${family.name}`}>
+                             <button onClick={() => onOpenTransferModal(family)} className="p-2 text-cyan-600 hover:bg-cyan-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Transfer Family" aria-label={`Transfer family ${family.name}`} disabled={isYearLocked}>
                                 <TransferIcon className="w-5 h-5" />
                             </button>
                              <button onClick={() => onViewFamilyReport({ id: family.id, name: family.name })} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors" title="View Yearly Report" aria-label={`View yearly report for ${family.name}`}>
                                 <ReportIcon className="w-5 h-5" />
                             </button>
-                             <button onClick={handleClearTitheClick} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors" title="Reset Tithes to Zero" aria-label={`Reset tithes for ${family.name}`}>
+                             <button onClick={handleClearTitheClick} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Reset Tithes to Zero" aria-label={`Reset tithes for ${family.name}`} disabled={isYearLocked}>
                                 <ResetIcon className="w-5 h-5" />
                             </button>
-                            <button onClick={handleEditClick} className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" title="Edit Family Info" aria-label={`Edit info for ${family.name}`}>
+                            <button onClick={handleEditClick} className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Edit Family Info" aria-label={`Edit info for ${family.name}`} disabled={isYearLocked}>
                                 <EditIcon className="w-5 h-5" />
                             </button>
-                            <button onClick={handleDeleteClick} className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors" title="Delete Family" aria-label={`Delete family ${family.name}`}>
+                            <button onClick={handleDeleteClick} className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete Family" aria-label={`Delete family ${family.name}`} disabled={isYearLocked}>
                                 <TrashIcon className="w-5 h-5" />
                             </button>
                         </>
