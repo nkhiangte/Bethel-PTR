@@ -852,4 +852,5 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
             )}
         </div>
     );
-};
+  };
+}
