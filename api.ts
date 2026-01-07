@@ -30,16 +30,12 @@ export const fetchUpaBials = async (year: number): Promise<string[]> => {
         return bials.sort((a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
     }
 
-    // If doc for the year doesn't exist, find the most recent year's list to copy from.
-    // This is more robust as it doesn't require a specific Firestore index.
     const snapshot = await db.collection('settings').get();
 
     let bialsToSeed: string[];
     if (snapshot.empty) {
-        // This is the first time ever running, so use the hardcoded seed.
         bialsToSeed = SEED_UPA_BIALS;
     } else {
-        // Find the doc with the highest year ID to copy from.
         let latestYear = 0;
         let latestList: string[] = [];
         snapshot.forEach(doc => {
@@ -53,13 +49,10 @@ export const fetchUpaBials = async (year: number): Promise<string[]> => {
         if (latestList.length > 0) {
              bialsToSeed = latestList;
         } else {
-            // Fallback if no valid year documents were found,
-            // which could happen if only legacy documents exist.
             bialsToSeed = SEED_UPA_BIALS;
         }
     }
     
-    // Create the document for the new year with the determined list.
     await yearDocRef.set({ list: bialsToSeed });
     return bialsToSeed.sort((a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 };
@@ -70,10 +63,9 @@ export const updateUpaBialsList = async (year: number, newList: string[]): Promi
 };
 
 export const isBialInUse = async (year: number, bialName: string): Promise<boolean> => {
-    // Corrected: Check against titheLogs for the specified year and upaBial
     const logsQuery = db.collection('titheLogs')
                         .where('year', '==', year)
-                        .where('upaBial', '==', bialName) // Corrected from 'month' == 'bialName'
+                        .where('upaBial', '==', bialName)
                         .limit(1);
     const snapshot = await logsQuery.get();
     return !snapshot.empty;
@@ -94,34 +86,29 @@ export const updateArchiveStatus = async (year: number, isArchived: boolean): Pr
 // --- USER MANAGEMENT API ---
 
 export const createUserDocument = async (user: FirebaseUser, additionalData?: { displayName: string, assignedBial: string | null }): Promise<void> => {
-    // Fix: Use v8 compat syntax
     const userRef = db.collection('users').doc(user.uid);
     const userDoc = await userRef.get();
 
-    // Create a document only if it doesn't already exist
     if (!userDoc.exists) {
         const isAdmin = user.email === 'nkhiangte@gmail.com';
-        // Fix: Use v8 compat syntax for set and serverTimestamp
         await userRef.set({
             uid: user.uid,
             email: user.email,
             displayName: additionalData?.displayName || user.displayName || user.email?.split('@')[0],
-            isAdmin: isAdmin,       // Default role: not an admin, unless it's the specified email
-            assignedBial: isAdmin ? null : (additionalData?.assignedBial || null), // Default role: no bial assigned
+            isAdmin: isAdmin,
+            assignedBial: isAdmin ? null : (additionalData?.assignedBial || null),
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
     }
 };
 
 export const fetchAllUsers = async (): Promise<UserDoc[]> => {
-    // Fix: Use v8 compat syntax for query and get
     const usersQuery = db.collection('users').orderBy('email');
     const snapshot = await usersQuery.get();
     return snapshot.docs.map(d => d.data() as UserDoc);
 };
 
 export const updateUserRoles = async (uid: string, roles: { isAdmin: boolean; assignedBial: string | null }): Promise<void> => {
-    // Fix: Use v8 compat syntax
     const userRef = db.collection('users').doc(uid);
     await userRef.update({
         isAdmin: roles.isAdmin,
@@ -130,7 +117,6 @@ export const updateUserRoles = async (uid: string, roles: { isAdmin: boolean; as
 };
 
 export const fetchUserDocument = async (uid: string): Promise<UserDoc | null> => {
-    // Fix: Use v8 compat syntax
     const userRef = db.collection('users').doc(uid);
     const docSnap = await userRef.get();
     if (docSnap.exists) {
@@ -139,11 +125,6 @@ export const fetchUserDocument = async (uid: string): Promise<UserDoc | null> =>
     return null;
 };
 
-/**
- * Removes a user's document from the Firestore 'users' collection.
- * Note: This does not delete the user from Firebase Authentication, 
- * but it revokes their access to the app since access depends on the Firestore document.
- */
 export const deleteUserDocument = async (uid: string): Promise<void> => {
     await db.collection('users').doc(uid).delete();
 };
@@ -153,7 +134,6 @@ export const deleteUserDocument = async (uid: string): Promise<void> => {
 
 const getTitheLogRef = (year: number, month: string, familyId: string) => {
     const logId = `${year}_${month}_${familyId}`;
-    // Fix: Use v8 compat syntax
     return db.collection('titheLogs').doc(logId);
 };
 
@@ -163,7 +143,7 @@ export const fetchFamilies = async (year: number, month: string, upaBial: string
     const currentYear = new Date().getFullYear();
 
     const familyIdsInBial = new Set<string>();
-    const titheDataMap = new Map<string, Tithe>(); // Map familyId to its tithe for the month
+    const titheDataMap = new Map<string, Tithe>();
 
     // 1. Get families based on existing tithe logs for the specific year, month, and upaBial
     const logsQuery = titheLogsRef
@@ -178,14 +158,12 @@ export const fetchFamilies = async (year: number, month: string, upaBial: string
         titheDataMap.set(data.familyId, data.tithe as Tithe);
     });
 
-    // 2. If it's the current year, also include families currently assigned to this upaBial,
-    // even if they haven't made a contribution yet this month.
+    // 2. If it's the current year, also include families currently assigned to this upaBial
     if (year === currentYear) {
         const currentBialFamiliesQuery = familiesRef.where('currentBial', '==', upaBial);
         const currentBialFamiliesSnapshot = await currentBialFamiliesQuery.get();
         currentBialFamiliesSnapshot.forEach(doc => {
             const family = { id: doc.id, ...doc.data() } as Family;
-            // Add to the set only if not already present from tithe logs
             if (!familyIdsInBial.has(family.id)) {
                 familyIdsInBial.add(family.id);
             }
@@ -195,12 +173,11 @@ export const fetchFamilies = async (year: number, month: string, upaBial: string
     const uniqueFamilyIds = Array.from(familyIdsInBial);
 
     if (uniqueFamilyIds.length === 0) {
-        return []; // No families found for this criteria
+        return [];
     }
 
-    // 3. Fetch full family documents for all identified family IDs
+    // 3. Fetch full family documents
     const familiesDocs: Family[] = [];
-    // Firestore `in` query is limited to 10. Need to chunk if more than 10 families.
     const chunks: string[][] = [];
     for (let i = 0; i < uniqueFamilyIds.length; i += 10) {
         chunks.push(uniqueFamilyIds.slice(i, i + 10));
@@ -213,7 +190,7 @@ export const fetchFamilies = async (year: number, month: string, upaBial: string
         });
     }
 
-    // 4. Combine family data with their tithe for the specific month
+    // 4. Combine family data
     const familiesWithTithe: FamilyWithTithe[] = familiesDocs.map(family => {
         const tithe = titheDataMap.get(family.id) || { pathianRam: 0, ramthar: 0, tualchhung: 0 };
         return {
@@ -228,7 +205,6 @@ export const fetchFamilies = async (year: number, month: string, upaBial: string
     return familiesWithTithe.sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };
 
-// New function to fetch a single family by ID
 export const fetchFamilyById = async (familyId: string): Promise<Family | null> => {
     const docRef = db.collection('families').doc(familyId);
     const docSnap = await docRef.get();
@@ -241,7 +217,6 @@ export const fetchFamilyById = async (familyId: string): Promise<Family | null> 
 
 export const addFamily = async (year: number, month: string, upaBial: string, name: string): Promise<void> => {
     const trimmedName = name.trim();
-    // Check for existing family with same name in same bial
     const q = db.collection('families').where('name', '==', trimmedName).where('currentBial', '==', upaBial);
     const existing = await q.get();
 
@@ -276,7 +251,6 @@ export const addFamily = async (year: number, month: string, upaBial: string, na
 };
 
 export const importFamilies = async (year: number, upaBial: string, familiesToImport: { name: string; ipSerialNo: number | null }[]): Promise<{added: number, skipped: number}> => {
-    // Fix: Use v8 compat syntax
     const batch = db.batch();
     const familiesRef = db.collection('families');
     
@@ -284,7 +258,6 @@ export const importFamilies = async (year: number, upaBial: string, familiesToIm
     const snapshot = await q.get();
     const existingNames = new Set(snapshot.docs.map(d => d.data().name.trim().toLowerCase()));
     
-    // De-duplicate the list from the file, keeping the first occurrence.
     const uniqueFamiliesFromFile = new Map<string, { name: string; ipSerialNo: number | null }>();
     for (const family of familiesToImport) {
         const trimmedName = family.name.trim();
@@ -294,7 +267,6 @@ export const importFamilies = async (year: number, upaBial: string, familiesToIm
     }
     
     let addedCount = 0;
-    // Skipped count starts with families that were duplicates within the file itself.
     let skippedCount = familiesToImport.length - uniqueFamiliesFromFile.size;
 
     for (const family of uniqueFamiliesFromFile.values()) {
@@ -302,16 +274,15 @@ export const importFamilies = async (year: number, upaBial: string, familiesToIm
         if (existingNames.has(trimmedName.toLowerCase())) {
             skippedCount++;
         } else {
-            // Fix: Use v8 compat doc() on collection
             const newFamilyRef = familiesRef.doc();
             batch.set(newFamilyRef, {
                 name: trimmedName,
                 currentBial: upaBial,
-                ipSerialNo: family.ipSerialNo, // Set the serial number
+                ipSerialNo: family.ipSerialNo, 
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             });
             addedCount++;
-            existingNames.add(trimmedName.toLowerCase()); // Add to set to prevent duplicates from within the same batch.
+            existingNames.add(trimmedName.toLowerCase());
         }
     }
 
@@ -328,14 +299,11 @@ export const importContributions = async (
     upaBial: string,
     contributionsToImport: { name: string; ipSerialNo: number | null; tithe: Tithe }[]
 ): Promise<{ updated: number; created: number; skipped: number; skippedInfo: { name: string, reason: string }[] }> => {
-    // Fix: Use v8 compat syntax
     const batch = db.batch();
 
-    // 1. Fetch all families for the given upaBial
     const familiesQuery = db.collection('families').where('currentBial', '==', upaBial);
     const familiesSnapshot = await familiesQuery.get();
     
-    // 2. Create maps for quick lookup
     const familiesByName = new Map<string, Family>();
     const familiesBySerial = new Map<number, Family>();
     familiesSnapshot.docs.forEach(d => {
@@ -350,7 +318,6 @@ export const importContributions = async (
     const skippedRecords: { name: string, reason: string }[] = [];
     const processedNames = new Set<string>();
 
-    // 3. Iterate through imported contribution data
     for (const record of contributionsToImport) {
         const trimmedName = record.name.trim();
         if (!trimmedName || processedNames.has(trimmedName.toLowerCase())) {
@@ -363,20 +330,15 @@ export const importContributions = async (
 
         let familyToUpdate: Family | undefined = undefined;
 
-        // 4. Try to find a matching family
-        // First by S/N
         if (record.ipSerialNo !== null && record.ipSerialNo !== undefined) {
             familyToUpdate = familiesBySerial.get(record.ipSerialNo);
         }
-        // If not found by S/N, try by name
         if (!familyToUpdate) {
             familyToUpdate = familiesByName.get(trimmedName.toLowerCase());
         }
 
-        // 5. If a family is found, create/update their titheLog. If not, create them.
         if (familyToUpdate) {
             const logRef = getTitheLogRef(year, month, familyToUpdate.id);
-            // This is a "set" operation because we are replacing the entire month's data.
             batch.set(logRef, {
                 year,
                 month,
@@ -387,11 +349,9 @@ export const importContributions = async (
             });
             updatedCount++;
         } else {
-            // Family not found - CREATE a new family and their tithe log.
             const familiesRef = db.collection('families');
-            const newFamilyRef = familiesRef.doc(); // Create a new doc reference with a local ID
+            const newFamilyRef = familiesRef.doc();
             
-            // Add the new family to the batch
             batch.set(newFamilyRef, {
                 name: trimmedName,
                 currentBial: upaBial,
@@ -399,7 +359,6 @@ export const importContributions = async (
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             });
 
-            // Add the tithe log for the new family to the batch, using the new local ID
             const logRef = getTitheLogRef(year, month, newFamilyRef.id);
             batch.set(logRef, {
                 year,
@@ -428,7 +387,6 @@ export const importContributions = async (
 export const updateTithe = async (year: number, month: string, upaBial: string, familyId: string, categoryOrTithe: TitheCategory | Tithe, value?: number): Promise<void> => {
     const logRef = getTitheLogRef(year, month, familyId);
     
-    // Fix: Use v8 compat syntax
     await db.runTransaction(async (transaction) => {
         const logDoc = await transaction.get(logRef);
         
@@ -461,7 +419,6 @@ export const updateTithe = async (year: number, month: string, upaBial: string, 
 };
 
 export const updateFamilyDetails = async (familyId: string, data: { name?: string; ipSerialNo?: number | null }): Promise<void> => {
-    // Fix: Use v8 compat syntax
     const familyRef = db.collection('families').doc(familyId);
     await familyRef.update(data);
 };
@@ -473,7 +430,6 @@ export const removeFamily = async (familyId: string, year: number): Promise<void
     // the tithe logs for the specified year. It does NOT touch the global `currentBial` 
     // field on the family document. To update `currentBial`, use `unassignFamilyFromBial`.
 
-    // 2. Delete all associated tithe logs *only for the specified year*
     const logsQuery = db.collection('titheLogs').where('familyId', '==', familyId).where('year', '==', year);
     const logsSnapshot = await logsQuery.get();
     logsSnapshot.forEach(logDoc => {
@@ -495,7 +451,6 @@ export const removeAllFamiliesFromBial = async (year: number, bialName: string):
     // IMPORTANT: Only delete tithe logs to preserve independence between years.
     // Do NOT unset currentBial.
 
-    // Delete tithe logs for this Bial in this Year
     const logsQuery = db.collection('titheLogs')
         .where('year', '==', year)
         .where('upaBial', '==', bialName);
@@ -532,7 +487,6 @@ export const unassignFamilyFromBial = async (familyId: string): Promise<void> =>
     await familyRef.update({ currentBial: null });
 };
 
-// New API function for searching all families
 export const searchAllFamilies = async (searchTerm: string = ''): Promise<Family[]> => {
     const familiesRef = db.collection('families');
     const snapshot = await familiesRef.orderBy('name').get();
@@ -554,7 +508,6 @@ export const searchAllFamilies = async (searchTerm: string = ''): Promise<Family
 // --- REPORTING API ---
 export const fetchMonthlyReport = async (year: number, month: string): Promise<AggregateReportData> => {
     const report: AggregateReportData = {};
-    // Fix: Use v8 compat syntax
     const logsQuery = db.collection('titheLogs').where('year', '==', year).where('month', '==', month);
     const logsSnapshot = await logsQuery.get();
 
@@ -574,7 +527,6 @@ export const fetchMonthlyReport = async (year: number, month: string): Promise<A
 
 export const fetchYearlyReport = async (year: number): Promise<AggregateReportData> => {
     const report: AggregateReportData = {};
-    // Fix: Use v8 compat syntax
     const logsQuery = db.collection('titheLogs').where('year', '==', year);
     const logsSnapshot = await logsQuery.get();
     
@@ -594,7 +546,6 @@ export const fetchYearlyReport = async (year: number): Promise<AggregateReportDa
 
 // For FamilyYearlyReport.tsx
 export const fetchFamilyYearlyData = async (year: number, familyId: string): Promise<{ data: FamilyYearlyTitheData, familyInfo: { name: string, ipSerialNo: number | null } }> => {
-    // Fix: Use v8 compat syntax
     const familyRef = db.collection('families').doc(familyId);
     const familySnap = await familyRef.get();
 
@@ -608,7 +559,6 @@ export const fetchFamilyYearlyData = async (year: number, familyId: string): Pro
     };
 
     const yearlyData: FamilyYearlyTitheData = {};
-    // Fix: Use v8 compat syntax
     const logsQuery = db.collection('titheLogs').where('year', '==', year).where('familyId', '==', familyId);
     const logsSnapshot = await logsQuery.get();
 
@@ -644,13 +594,12 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
         aggregatedTithes[familyId].tualchhung += tithe.tualchhung;
     });
 
-    // 2. If it's the current year, also include families whose currentBial matches, even if they haven't contributed yet
+    // 2. If it's the current year, also include families whose currentBial matches
     if (year === currentYear) {
         const currentBialFamiliesQuery = familiesRef.where('currentBial', '==', upaBial);
         const currentBialFamiliesSnapshot = await currentBialFamiliesQuery.get();
         currentBialFamiliesSnapshot.forEach(doc => {
             const family = { id: doc.id, ...doc.data() } as Family;
-            // Add to the set only if not already present from tithe logs
             if (!familyIdsInBialForYear.has(family.id)) {
                 familyIdsInBialForYear.add(family.id);
             }
@@ -663,9 +612,8 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
         return [];
     }
 
-    // 3. Fetch full family documents for all identified family IDs
+    // 3. Fetch full family documents
     const familiesDocs: Family[] = [];
-    // Chunk `in` queries if there are more than 10 unique family IDs
     const chunks: string[][] = [];
     for (let i = 0; i < uniqueFamilyIds.length; i += 10) {
         chunks.push(uniqueFamilyIds.slice(i, i + 10));
@@ -689,7 +637,6 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
         };
     });
     
-    // Sort by S/N
     return reportData.sort((a, b) => (a.ipSerialNo ?? Infinity) - (b.ipSerialNo ?? Infinity));
 };
 
@@ -700,7 +647,6 @@ const convertToNewBialInfo = (docData: any): BialInfo => {
     if (docData && Array.isArray(docData.vawngtu)) {
         return docData as BialInfo;
     }
-    // Default to an empty array for new or malformed documents
     return { vawngtu: [] };
 };
 
@@ -710,7 +656,7 @@ export const updateBialInfo = async (year: number, upaBial: string, data: BialIn
 };
 
 export const fetchAllBialInfo = async (year: number): Promise<Map<string, BialInfo>> => {
-    const infoMap = new Map<string, BialInfo>(); // Fix: Declare infoMap
+    const infoMap = new Map<string, BialInfo>(); 
     const snapshot = await db.collection('settings').doc(String(year)).collection('bialInfo').get();
     snapshot.forEach(doc => {
         infoMap.set(doc.id, convertToNewBialInfo(doc.data()));

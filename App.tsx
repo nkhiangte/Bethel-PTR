@@ -19,7 +19,7 @@ import { FamilyYearlyReport } from './components/FamilyYearlyReport.tsx';
 import { BialYearlyFamilyReport } from './components/BialYearlyFamilyReport.tsx';
 import { UserManagement } from './components/UserManagement.tsx';
 import { UpaBialSettings } from './components/BialManagement.tsx';
-import { AllFamiliesManagement } from './components/AllFamiliesManagement.tsx'; // New import
+import { AllFamiliesManagement } from './components/AllFamiliesManagement.tsx'; 
 import { ImportContributionsModal } from './components/ImportContributionsModal.tsx';
 import { SearchBar } from './components/SearchBar.tsx';
 import { InstallPWAButton } from './components/InstallPWAButton.tsx';
@@ -117,19 +117,17 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [currentBialInfo, setCurrentBialInfo] = useState<BialInfo | null>(null);
   
   const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
-  const [familyToTransfer, setFamilyToTransfer] = useState<Family | null>(null); // Changed type to Family
+  const [familyToTransfer, setFamilyToTransfer] = useState<Family | null>(null); 
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'upaBialSettings' | 'allFamiliesManagement'>('entry'); // Added allFamiliesManagement
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'upaBialSettings' | 'allFamiliesManagement'>('entry'); 
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isImportContributionsModalOpen, setIsImportContributionsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // New state for year archive status
   const [isYearExplicitlyArchived, setIsYearExplicitlyArchived] = useState<boolean>(false);
 
-  // New states for sorting
   const [sortBy, setSortBy] = useState<'name' | 'serial' | null>(null); 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -146,12 +144,11 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setView('entry');
     setError(null);
     setSearchTerm('');
-    setIsYearExplicitlyArchived(false); // Reset archive status
-    setSortBy(null); // Reset sort
-    setSortOrder('asc'); // Reset sort
+    setIsYearExplicitlyArchived(false); 
+    setSortBy(null); 
+    setSortOrder('asc'); 
   }, []);
 
-  // Effect to load Upa Bials list for the CURRENT year for User Management & Registration
   useEffect(() => {
     const loadCurrentYearBials = async () => {
         try {
@@ -165,14 +162,12 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     loadCurrentYearBials();
   }, []);
 
-  // Effect to auto-select bial for restricted users on login
   useEffect(() => {
     if (assignedBial) {
         setSelectedUpaBial(assignedBial);
     }
   }, [assignedBial]);
 
-  // Effect to load Upa Bials for the SELECTED year AND fetch its archive status
   useEffect(() => {
     if (selectedYear) {
       const loadYearData = async () => {
@@ -200,7 +195,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   }, [selectedYear]);
 
 
-  // Effect to fetch families when selection is complete
   useEffect(() => {
     if (selectedYear && selectedMonth && selectedUpaBial) {
       const fetchFam = async () => {
@@ -209,7 +203,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
         try {
           const fetchedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
           setFamilies(fetchedFamilies);
-          setSortBy(null); // Reset sort when new data is fetched
+          setSortBy(null); 
           setSortOrder('asc');
         } catch (e) {
           console.error(e);
@@ -224,7 +218,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
 
-  // Effect to fetch Bial Overseer info for the selected year and bial
   useEffect(() => {
     if (selectedUpaBial && selectedYear) {
       const fetchInfo = async () => {
@@ -237,7 +230,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [selectedUpaBial, selectedYear]);
   
-  // Effect to fetch monthly report data when view changes
   useEffect(() => {
     if (view === 'report' && selectedYear && selectedMonth) {
         const fetchReport = async () => {
@@ -257,7 +249,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [view, selectedYear, selectedMonth]);
 
-  // Effect to fetch yearly report data when view changes
   useEffect(() => {
     if (view === 'yearlyReport' && selectedYear) {
         const fetchReport = async () => {
@@ -277,7 +268,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [view, selectedYear]);
 
-  // Determine if data entry/modification should be locked for the selected year
   const isDataEntryLocked = useMemo(() => {
     if (selectedYear === null) return false;
     return selectedYear < currentYear || isYearExplicitlyArchived;
@@ -288,7 +278,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Pass selectedMonth to create initial log
       await api.addFamily(selectedYear, selectedMonth, selectedUpaBial, name.trim());
       const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
       setFamilies(updatedFamilies);
@@ -328,7 +317,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
     try {
         const result = await api.importContributions(year, month, upaBial, data);
-        // After successful import, refresh the family data for the current view
         if (year === selectedYear && month === selectedMonth && upaBial === selectedUpaBial) {
              const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
              setFamilies(updatedFamilies);
@@ -336,7 +324,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
         return result;
     } catch (e: any) {
         console.error('Failed to import contributions:', e);
-        throw e; // Let the modal handle displaying the error message
+        throw e;
     }
   };
 
@@ -408,14 +396,12 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
   }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
-  // New handler for opening TransferFamilyModal from components providing Family type (e.g., AllFamiliesManagement)
   const handleOpenTransferModalFromFamily = useCallback((family: Family) => {
     setFamilyToTransfer(family);
   }, []);
 
-  // New handler for opening TransferFamilyModal from components providing FamilyWithTithe type (e.g., TitheTable)
   const handleOpenTransferModalFromFamilyWithTithe = useCallback(async (familyWithTithe: FamilyWithTithe) => {
-    setIsLoading(true); // Show loading while fetching full family data
+    setIsLoading(true); 
     setError(null);
     try {
         const fullFamily = await api.fetchFamilyById(familyWithTithe.id);
@@ -438,19 +424,13 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   }
 
   const handleTransferFamily = useCallback(async (familyId: string, destinationBial: string) => {
-    // Note: isDataEntryLocked is checked here, but TransferFamilyModal itself receives isYearLocked={false}
-    // from App.tsx, allowing transfers regardless of the selected data entry year in the main view.
-    // This logic ensures that if the main view *itself* is locked (e.g., in a past year's context),
-    // and a user somehow tries to initiate a transfer *from that view*, it's prevented.
-    // However, the AllFamiliesManagement view explicitly sets isYearLocked={false} for its modal.
     if (isDataEntryLocked) return; 
 
     setError(null);
     setIsLoading(true);
     try {
         await api.transferFamily(familyId, destinationBial);
-        // If transfer is done from the specific bial view, update its family list.
-        if (selectedUpaBial === familyToTransfer?.currentBial) { // Use familyToTransfer.currentBial to check source
+        if (selectedUpaBial === familyToTransfer?.currentBial) {
             setFamilies(prev => prev.filter(f => f.id !== familyId));
         }
         handleCloseTransferModal();
@@ -460,13 +440,13 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     } finally {
         setIsLoading(false);
     }
-  }, [isDataEntryLocked, selectedUpaBial, familyToTransfer]); // Added isDataEntryLocked to dependencies
+  }, [isDataEntryLocked, selectedUpaBial, familyToTransfer]); 
   
   const handleBackFromTitheTable = useCallback(() => {
     setSelectedMonth(null);
     setSearchTerm('');
-    setSortBy(null); // Reset sort when going back
-    setSortOrder('asc'); // Reset sort when going back
+    setSortBy(null); 
+    setSortOrder('asc'); 
   }, []);
 
   const handleViewFamilyReport = useCallback((family: {id: string, name: string}) => {
@@ -485,12 +465,12 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
         setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
         setSortBy(criteria);
-        setSortOrder('asc'); // Default to ascending when changing criteria
+        setSortOrder('asc'); 
     }
   };
 
   const sortedFamilies = useMemo(() => {
-    let currentFamilies = [...families]; // Create a mutable copy
+    let currentFamilies = [...families]; 
 
     if (sortBy === 'name') {
         currentFamilies.sort((a, b) => {
@@ -502,13 +482,12 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
         });
     } else if (sortBy === 'serial') {
         currentFamilies.sort((a, b) => {
-            const serialA = a.ipSerialNo ?? Infinity; // Treat null serial numbers as largest
+            const serialA = a.ipSerialNo ?? Infinity; 
             const serialB = b.ipSerialNo ?? Infinity;
 
             if (serialA !== serialB) {
                 return sortOrder === 'asc' ? serialA - serialB : serialB - serialA;
             }
-            // Tie-breaker: sort by name if serial numbers are the same (or both null)
             const nameA = a.name.toLowerCase();
             const nameB = b.name.toLowerCase();
             if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
@@ -516,12 +495,11 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
             return 0;
         });
     }
-    // If sortBy is null, the order is naturally from fetchFamilies (S/N then Name)
     return currentFamilies;
   }, [families, sortBy, sortOrder]);
 
   const filteredAndSortedFamilies = useMemo(() => {
-    const familiesToFilter = sortedFamilies; // Use the already sorted list
+    const familiesToFilter = sortedFamilies; 
 
     if (!searchTerm) {
         return familiesToFilter;
@@ -718,17 +696,16 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 />
     }
 
-    if (view === 'allFamiliesManagement') { // New render logic for AllFamiliesManagement
+    if (view === 'allFamiliesManagement') { 
         return <AllFamiliesManagement
                     onBack={() => setView('entry')}
                     onGoToDashboard={clearSelections}
-                    upaBials={currentYearBials} // Pass current year bials for transfers
-                    currentYear={currentYear} // Pass current year for reports
-                    onOpenTransferModal={handleOpenTransferModalFromFamily} // Use the new specific handler
+                    upaBials={currentYearBials} 
+                    currentYear={currentYear} 
+                    onOpenTransferModal={handleOpenTransferModalFromFamily} 
                 />
     }
 
-    // Main App Flow: Year -> Bial (Admin) -> Month -> Table
     if (!selectedYear) {
         return <YearSelection 
                     years={YEARS} 
@@ -755,12 +732,10 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                     onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)}
                     onGoToDashboard={clearSelections}
                     onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
-                    isDataEntryLocked={isDataEntryLocked} // Pass the locked status
+                    isDataEntryLocked={isDataEntryLocked} 
                 />;
     }
 
-
-    // Tithe Entry View
     return (
         <div className="printable-area">
             <div className="hidden print:block text-center mb-4">
@@ -814,7 +789,6 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 </div>
             </div>
 
-            {/* Search and Sort Controls */}
             {families.length > 0 && (
                 <>
                     <div className="mb-4 no-print">
@@ -846,7 +820,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 isLoading={isLoading}
                 onTitheChange={handleTitheChange}
                 onRemoveFamily={handleRemoveFamily}
-                onUnassignFamily={handleUnassignFamily} // Pass the unassign handler
+                onUnassignFamily={handleUnassignFamily} 
                 onBulkRemoveFamilies={handleBulkRemoveFamilies} 
                 onUpdateFamilyName={handleUpdateFamilyName}
                 onUpdateIpSerialNo={handleUpdateIpSerialNo}
