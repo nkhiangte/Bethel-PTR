@@ -4,10 +4,11 @@ import type { FamilyWithTithe, TitheCategory } from '../types.ts';
 
 interface TitheRowProps {
   family: FamilyWithTithe;
-  isSelected: boolean; // New prop
-  onToggleSelect: () => void; // New prop
+  isSelected: boolean; 
+  onToggleSelect: () => void; 
   onTitheChange: (familyId: string, category: TitheCategory, value: number) => void;
-  onRemoveFamily: (familyId: string, year: number) => void; // Updated signature
+  onRemoveFamily: (familyId: string, year: number) => void; 
+  onUnassignFamily: (familyId: string) => void; // New prop
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: FamilyWithTithe) => void;
@@ -15,15 +16,21 @@ interface TitheRowProps {
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string, name: string}) => void;
   formatCurrency: (value: number) => string;
-  currentYear: number; // New prop
-  selectedYear: number; // New prop
-  isDataEntryLocked: boolean; // New prop
+  currentYear: number; 
+  selectedYear: number; 
+  isDataEntryLocked: boolean; 
 }
 
 // Icons
 const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
         <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+    </svg>
+);
+
+const UserMinusIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+       <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm6 11h-8v-2h8v2zm-6-5c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
     </svg>
 );
 
@@ -70,10 +77,11 @@ const TransferIcon: React.FC<{className?: string}> = ({ className }) => (
 
 export const TitheRow: React.FC<TitheRowProps> = ({ 
     family,
-    isSelected, // New prop
-    onToggleSelect, // New prop
+    isSelected, 
+    onToggleSelect, 
     onTitheChange, 
     onRemoveFamily, 
+    onUnassignFamily, // Use new prop
     onUpdateFamilyName,
     onUpdateIpSerialNo,
     onOpenTitheModal,
@@ -81,9 +89,9 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     onClearTithe,
     onViewFamilyReport,
     formatCurrency,
-    currentYear, // Use new prop
-    selectedYear, // Use new prop
-    isDataEntryLocked // Use new prop
+    currentYear, 
+    selectedYear, 
+    isDataEntryLocked 
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedName, setEditedName] = useState(family.name);
@@ -99,7 +107,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     }, [isEditing]);
 
     const handleEditClick = () => {
-        if (isDataEntryLocked) return; // Prevent editing if year is locked
+        if (isDataEntryLocked) return; 
         setIsEditing(true);
     };
     
@@ -110,7 +118,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     };
     
     const handleSaveClick = () => {
-        if (isDataEntryLocked) return; // Prevent saving if year is locked
+        if (isDataEntryLocked) return; 
 
         const newName = editedName.trim();
         const newSerial = editedSerial.trim() === '' ? null : parseInt(editedSerial, 10);
@@ -144,15 +152,23 @@ export const TitheRow: React.FC<TitheRowProps> = ({
     };
     
     const handleDeleteClick = () => {
-        if (isDataEntryLocked) return; // Prevent deletion if year is locked
+        if (isDataEntryLocked) return;
 
-        if (window.confirm(`I chiang chiah em, he chhungkua "${family.name}" hi paih i duh takzet em? He chhungkua hi kum ${selectedYear} atanga Upa Bial hrang hrang atanga tihbo (unassigned) a ni ang a, kum ${selectedYear} chhunga an thawhlawm chhunluh zawng zawng pawh paih vek a ni ang. Amaherawhchu, kum hmasa (hlui) zawng zawzawngah chuan an thawhlawm chhunluh chu a awm hmunah a awm zel ang.`)) {
-            onRemoveFamily(family.id, selectedYear); // Pass selectedYear
+        if (window.confirm(`I chiang chiah em, he chhungkua "${family.name}" te kum ${selectedYear} atan a thawhlawm data zawng zawng i paih (delete) dawn a ni. Hei hian kum dang a khawih pawi lo ang.`)) {
+            onRemoveFamily(family.id, selectedYear); 
+        }
+    };
+
+    const handleUnassignClick = () => {
+        if (isDataEntryLocked) return;
+
+        if (window.confirm(`I chiang chiah em, chhungkua "${family.name}" hi Upa Bial atanga hmet chhuak (unassign) i duh takzet em? Hei hian an thawhlawm chhunluh tawhte a rawn paih tel dawn lo, mahse Upa Bial dangah sawn an nih hma chu a lang tawh lo ang.`)) {
+            onUnassignFamily(family.id);
         }
     };
     
     const handleClearTitheClick = () => {
-        if (isDataEntryLocked) return; // Prevent clearing if year is locked
+        if (isDataEntryLocked) return; 
          if (window.confirm(`Are you sure you want to reset all tithe contributions for "${family.name}" for this month to zero?`)) {
             onClearTithe(family.id);
         }
@@ -176,13 +192,13 @@ export const TitheRow: React.FC<TitheRowProps> = ({
             <td className="px-2 py-2 sm:px-3 text-sm text-slate-600 whitespace-nowrap">
                 {isEditing ? (
                      <input
-                        type="text" // Use text to allow empty input
+                        type="text" 
                         value={editedSerial}
-                        onChange={(e) => setEditedSerial(e.target.value.replace(/[^0-9]/g, ''))} // Allow only numbers
+                        onChange={(e) => setEditedSerial(e.target.value.replace(/[^0-9]/g, ''))} 
                         onKeyDown={handleKeyDown}
                         placeholder="N/A"
                         className="w-20 bg-sky-100 border border-amber-400 rounded-md px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
-                        disabled={isDataEntryLocked} // Disable input for locked years
+                        disabled={isDataEntryLocked} 
                     />
                 ) : (
                     family.ipSerialNo ?? <span className="text-slate-400 italic">N/A</span>
@@ -198,7 +214,7 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                         onChange={(e) => setEditedName(e.target.value)}
                         onKeyDown={handleKeyDown}
                         className="w-full bg-sky-100 border border-amber-400 rounded-md px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
-                        disabled={isDataEntryLocked} // Disable input for locked years
+                        disabled={isDataEntryLocked} 
                     />
                 ) : (
                     family.name
@@ -268,7 +284,12 @@ export const TitheRow: React.FC<TitheRowProps> = ({
                             <button onClick={handleEditClick} className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Edit Family Info" aria-label={`Edit info for ${family.name}`} disabled={isDataEntryLocked}>
                                 <EditIcon className="w-5 h-5" />
                             </button>
-                            <button onClick={handleDeleteClick} className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete Family" aria-label={`Delete family ${family.name}`} disabled={isDataEntryLocked}>
+                            {/* UNASSIGN BUTTON */}
+                            <button onClick={handleUnassignClick} className="p-2 text-orange-600 hover:bg-orange-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Unassign from Active List" aria-label={`Unassign family ${family.name} from bial`} disabled={isDataEntryLocked}>
+                                <UserMinusIcon className="w-5 h-5" />
+                            </button>
+                            {/* DELETE BUTTON */}
+                            <button onClick={handleDeleteClick} className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete Contribution Records for this Year" aria-label={`Delete family ${family.name} logs`} disabled={isDataEntryLocked}>
                                 <TrashIcon className="w-5 h-5" />
                             </button>
                         </>

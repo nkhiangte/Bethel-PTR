@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -287,7 +288,8 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setIsLoading(true);
     setError(null);
     try {
-      await api.addFamily(selectedYear, selectedUpaBial, name.trim());
+      // Pass selectedMonth to create initial log
+      await api.addFamily(selectedYear, selectedMonth, selectedUpaBial, name.trim());
       const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
       setFamilies(updatedFamilies);
     } catch (e: any) {
@@ -356,6 +358,12 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
     await api.removeFamily(familyId, year);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
+
+  const handleUnassignFamily = useCallback(async (familyId: string) => {
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
+    setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
+    await api.unassignFamilyFromBial(familyId);
   }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleBulkRemoveFamilies = useCallback(async (familyIds: string[]) => {
@@ -838,7 +846,8 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 isLoading={isLoading}
                 onTitheChange={handleTitheChange}
                 onRemoveFamily={handleRemoveFamily}
-                onBulkRemoveFamilies={handleBulkRemoveFamilies} // Pass the bulk removal handler
+                onUnassignFamily={handleUnassignFamily} // Pass the unassign handler
+                onBulkRemoveFamilies={handleBulkRemoveFamilies} 
                 onUpdateFamilyName={handleUpdateFamilyName}
                 onUpdateIpSerialNo={handleUpdateIpSerialNo}
                 onOpenTitheModal={handleOpenTitheModal}
@@ -869,129 +878,4 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
             )}
         </div>
     );
-};
-
-  return (
-    <div className="min-h-screen bg-sky-50 font-sans text-slate-900 pb-10">
-      {/* PWA Install Button (Top Right) */}
-      <div className="fixed top-4 right-4 z-50 no-print">
-          <InstallPWAButton />
-      </div>
-
-      <div className="container mx-auto p-4 sm:p-6 md:p-8">
-        <Header onLogoClick={clearSelections} />
-        
-        <main className="mt-8">
-            {/* Action Bar / Navigation */}
-            {view === 'entry' && selectedYear && (
-                <div className="flex flex-wrap justify-center sm:justify-end gap-3 mb-6 no-print">
-                    <button
-                        onClick={() => setView('report')}
-                        className="flex items-center gap-2 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all text-sm shadow-sm"
-                        disabled={!selectedMonth || !selectedUpaBial}
-                         title={(!selectedMonth || !selectedUpaBial) ? "Select a Bial and Month first" : "View Monthly Report"}
-                    >
-                        <ReportIcon className="w-4 h-4" />
-                        Monthly Report
-                    </button>
-                    <button
-                        onClick={() => setView('yearlyReport')}
-                        className="flex items-center gap-2 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all text-sm shadow-sm"
-                        disabled={!selectedYear}
-                    >
-                        <ReportIcon className="w-4 h-4" />
-                        Yearly Report
-                    </button>
-                     {isAdmin && selectedUpaBial && (
-                         <button
-                            onClick={() => setView('bialYearlyReport')}
-                            className="flex items-center gap-2 bg-teal-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all text-sm shadow-sm"
-                        >
-                            <ReportIcon className="w-4 h-4" />
-                            Bial Yearly Report
-                        </button>
-                    )}
-                     {isAdmin && (
-                        <>
-                            <button
-                                onClick={() => setView('allFamiliesManagement')}
-                                className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all text-sm shadow-sm"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                                </svg>
-                                All Families
-                            </button>
-                            <button
-                                onClick={() => setView('upaBialSettings')}
-                                className="flex items-center gap-2 bg-slate-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all text-sm shadow-sm"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                                </svg>
-                                Settings
-                            </button>
-                            <button
-                                onClick={() => setView('userManagement')}
-                                className="flex items-center gap-2 bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all text-sm shadow-sm"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                                </svg>
-                                Users
-                            </button>
-                        </>
-                    )}
-                </div>
-            )}
-
-            {renderContent()}
-
-            {/* Modals */}
-            {familyForModal && (
-                <TitheModal
-                    family={familyForModal}
-                    onClose={handleCloseTitheModal}
-                    onSave={handleSaveTitheModal}
-                    isYearLocked={isDataEntryLocked}
-                />
-            )}
-            
-            {familyToTransfer && (
-                <TransferFamilyModal
-                    family={familyToTransfer}
-                    upaBials={currentYearBials}
-                    onClose={handleCloseTransferModal}
-                    onTransfer={handleTransferFamily}
-                    isYearLocked={false} // Always allowed from AllFamilies or explicitly handled
-                />
-            )}
-
-            {isImportContributionsModalOpen && selectedYear && (
-                <ImportContributionsModal
-                    year={selectedYear}
-                    upaBials={upaBials}
-                    selectedBial={isAdmin ? null : selectedUpaBial} // Admin can select any bial, user is locked to assigned
-                    onClose={() => setIsImportContributionsModalOpen(false)}
-                    onImport={handleImportContributions}
-                    isYearLocked={isDataEntryLocked}
-                />
-            )}
-        </main>
-
-        <footer className="mt-12 text-center text-slate-500 text-sm no-print">
-           <div className="flex items-center justify-center gap-4 mb-4">
-               <span>Logged in as: <strong>{user.email}</strong> {isAdmin ? '(Admin)' : ''}</span>
-               <button
-                   onClick={onLogout}
-                   className="bg-slate-200 text-slate-800 font-semibold px-3 py-1 rounded-md hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all text-xs"
-               >
-                  Logout
-               </button>
-           </div>
-           <p>Champhai Bethel Presbyterian Kohhran App. All rights reserved.</p>
-        </footer>
-      </div>
-    </div>
-  );
 };

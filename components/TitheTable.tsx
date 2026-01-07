@@ -8,17 +8,18 @@ interface TitheTableProps {
   families: FamilyWithTithe[];
   isLoading: boolean;
   onTitheChange: (familyId: string, category: TitheCategory, value: number) => void;
-  onRemoveFamily: (familyId: string, year: number) => void; // Updated signature
-  onBulkRemoveFamilies: (familyIds: string[]) => void; // New bulk remove handler
+  onRemoveFamily: (familyId: string, year: number) => void; 
+  onUnassignFamily: (familyId: string) => void; // New prop for global unassign
+  onBulkRemoveFamilies: (familyIds: string[]) => void;
   onUpdateFamilyName: (familyId: string, newName: string) => void;
   onUpdateIpSerialNo: (familyId: string, newSerial: number | null) => void;
   onOpenTitheModal: (family: FamilyWithTithe) => void;
   onOpenTransferModal: (family: FamilyWithTithe) => void;
   onClearTithe: (familyId: string) => void;
   onViewFamilyReport: (family: {id: string; name: string}) => void;
-  currentYear: number; // New prop
-  selectedYear: number; // New prop
-  isDataEntryLocked: boolean; // New prop
+  currentYear: number;
+  selectedYear: number;
+  isDataEntryLocked: boolean;
 }
 
 const formatCurrency = (value: number) => {
@@ -30,6 +31,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
     isLoading,
     onTitheChange, 
     onRemoveFamily, 
+    onUnassignFamily, // Destructure new prop
     onBulkRemoveFamilies,
     onUpdateFamilyName,
     onUpdateIpSerialNo,
@@ -37,9 +39,9 @@ export const TitheTable: React.FC<TitheTableProps> = ({
     onOpenTransferModal,
     onClearTithe,
     onViewFamilyReport,
-    currentYear, // Destructure new prop
-    selectedYear, // Destructure new prop
-    isDataEntryLocked // Destructure new prop
+    currentYear, 
+    selectedYear, 
+    isDataEntryLocked 
 }) => {
     
   const { totals, payingFamiliesCount } = useMemo(() => {
@@ -176,6 +178,7 @@ export const TitheTable: React.FC<TitheTableProps> = ({
                 onToggleSelect={() => handleSelectRow(family.id)}
                 onTitheChange={onTitheChange}
                 onRemoveFamily={onRemoveFamily}
+                onUnassignFamily={onUnassignFamily} // Pass to row
                 onUpdateFamilyName={onUpdateFamilyName}
                 onUpdateIpSerialNo={onUpdateIpSerialNo}
                 onOpenTitheModal={onOpenTitheModal}
@@ -183,9 +186,9 @@ export const TitheTable: React.FC<TitheTableProps> = ({
                 onClearTithe={onClearTithe}
                 onViewFamilyReport={onViewFamilyReport}
                 formatCurrency={formatCurrency}
-                currentYear={currentYear} // Pass new prop
-                selectedYear={selectedYear} // Pass new prop
-                isDataEntryLocked={isDataEntryLocked} // Pass new prop
+                currentYear={currentYear} 
+                selectedYear={selectedYear} 
+                isDataEntryLocked={isDataEntryLocked} 
               />
             ))
           )}
