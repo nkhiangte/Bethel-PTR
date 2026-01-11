@@ -51,12 +51,6 @@ const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-const ReportIcon: React.FC<{className?: string}> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-         <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-    </svg>
-);
-
 const UploadIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
         <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
@@ -67,49 +61,13 @@ const UploadIcon: React.FC<{className?: string}> = ({ className }) => (
 export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const { assignedBial, isAdmin } = user;
   
-  if (!isAdmin && !assignedBial) {
-    return (
-      <div className="container mx-auto p-4 sm:p-6 md:p-8">
-        <Header onLogoClick={() => {}} />
-        <main className="mt-8 mb-24">
-          <div className="flex flex-col items-center justify-center text-center p-4">
-            <div className="max-w-md w-full bg-sky-50 p-8 rounded-2xl shadow-lg border border-slate-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-16 w-16 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h2 className="mt-6 text-2xl font-bold text-slate-800">Account Pending Approval</h2>
-                <p className="mt-4 text-slate-600">
-                    Your registration is successful. An administrator needs to approve your account and assign you a role before you can proceed.
-                </p>
-                <p className="mt-2 text-slate-500">
-                    Please contact your administrator for assistance.
-                </p>
-            </div>
-          </div>
-        </main>
-        <footer className="mt-12 text-center text-slate-500 text-sm no-print">
-           <div className="flex items-center justify-center gap-4 mb-4">
-               <span>Logged in as: <strong>{user.email}</strong> (Pending Approval)</span>
-               <button
-                   onClick={onLogout}
-                   className="bg-slate-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all"
-               >
-                  Logout
-               </button>
-           </div>
-           <p>Champhai Bethel Presbyterian Kohhran App. All rights reserved.</p>
-        </footer>
-      </div>
-    );
-  }
-  
   const [upaBials, setUpaBials] = useState<string[]>([]);
   const [currentYearBials, setCurrentYearBials] = useState<string[]>([]);
   const [isLoadingBials, setIsLoadingBials] = useState(false);
   
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(null);
+  const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(assignedBial || null);
   
   const [families, setFamilies] = useState<FamilyWithTithe[]>([]);
   const [monthlyReportData, setMonthlyReportData] = useState<AggregateReportData | null>(null);
@@ -135,7 +93,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const clearSelections = useCallback(() => {
     setSelectedYear(null);
     setSelectedMonth(null);
-    setSelectedUpaBial(null);
+    if (!assignedBial) setSelectedUpaBial(null);
     setFamilies([]);
     setMonthlyReportData(null);
     setYearlyReportData(null);
@@ -147,7 +105,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setIsYearExplicitlyArchived(false); 
     setSortBy(null); 
     setSortOrder('asc'); 
-  }, []);
+  }, [assignedBial]);
 
   useEffect(() => {
     const loadCurrentYearBials = async () => {
@@ -156,23 +114,15 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
             setCurrentYearBials(fetchedBials);
         } catch (e) {
             console.error("Failed to fetch Upa Bials list for current year", e);
-            setError("Could not load core application settings. The application may not function correctly.");
         }
     };
     loadCurrentYearBials();
   }, []);
 
   useEffect(() => {
-    if (assignedBial) {
-        setSelectedUpaBial(assignedBial);
-    }
-  }, [assignedBial]);
-
-  useEffect(() => {
     if (selectedYear) {
       const loadYearData = async () => {
         setIsLoadingBials(true);
-        setError(null);
         try {
             const [fetchedBials, archivedStatus] = await Promise.all([
                 api.fetchUpaBials(selectedYear),
@@ -181,92 +131,31 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
             setUpaBials(fetchedBials);
             setIsYearExplicitlyArchived(archivedStatus);
         } catch (e) {
-            console.error(`Failed to fetch Upa Bials list or archive status for year ${selectedYear}`, e);
-            setError(`Could not load Upa Bials list or status for ${selectedYear}.`);
+            console.error(`Failed to load year data:`, e);
         } finally {
             setIsLoadingBials(false);
         }
       };
       loadYearData();
-    } else {
-        setUpaBials([]);
-        setIsYearExplicitlyArchived(false);
     }
   }, [selectedYear]);
-
 
   useEffect(() => {
     if (selectedYear && selectedMonth && selectedUpaBial) {
       const fetchFam = async () => {
         setIsLoading(true);
-        setError(null);
         try {
           const fetchedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
           setFamilies(fetchedFamilies);
-          setSortBy(null); 
-          setSortOrder('asc');
         } catch (e) {
           console.error(e);
-          setError('Could not fetch family data.');
         } finally {
           setIsLoading(false);
         }
       };
       fetchFam();
-    } else {
-        setFamilies([]);
     }
   }, [selectedYear, selectedMonth, selectedUpaBial]);
-
-  useEffect(() => {
-    if (selectedUpaBial && selectedYear) {
-      const fetchInfo = async () => {
-        const info = await api.fetchBialInfo(selectedYear, selectedUpaBial);
-        setCurrentBialInfo(info);
-      };
-      fetchInfo();
-    } else {
-      setCurrentBialInfo(null);
-    }
-  }, [selectedUpaBial, selectedYear]);
-  
-  useEffect(() => {
-    if (view === 'report' && selectedYear && selectedMonth) {
-        const fetchReport = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const data = await api.fetchMonthlyReport(selectedYear, selectedMonth);
-                setMonthlyReportData(data);
-            } catch(e) {
-                console.error(e);
-                setError('Could not fetch monthly report data.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchReport();
-    }
-  }, [view, selectedYear, selectedMonth]);
-
-  useEffect(() => {
-    if (view === 'yearlyReport' && selectedYear) {
-        const fetchReport = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const data = await api.fetchYearlyReport(selectedYear);
-                setYearlyReportData(data);
-            } catch(e) {
-                console.error(e);
-                setError('Could not fetch yearly report data.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchReport();
-    }
-  }, [view, selectedYear]);
 
   const isDataEntryLocked = useMemo(() => {
     if (selectedYear === null) return false;
@@ -274,192 +163,62 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   }, [selectedYear, currentYear, isYearExplicitlyArchived]);
 
   const handleAddFamily = useCallback(async (name: string) => {
-    if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
+    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setIsLoading(true);
-    setError(null);
     try {
       await api.addFamily(selectedYear, selectedMonth, selectedUpaBial, name.trim());
       const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
       setFamilies(updatedFamilies);
     } catch (e: any) {
-      setError(e.message || 'Failed to add family.');
+      alert(e.message || 'Failed to add family.');
     } finally {
       setIsLoading(false);
     }
   }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
-   const handleImportFamilies = useCallback(async (familiesToImport: { name: string; ipSerialNo: number | null }[], onResult: (message: string) => void) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-        const { added, skipped } = await api.importFamilies(selectedYear, selectedUpaBial, familiesToImport);
-        
-        let message = `${added} new families imported successfully!`;
-        if (skipped > 0) {
-            message += `\n${skipped} families were skipped because they already exist or were duplicates in the file.`;
-        }
-        onResult(message);
-
-        const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
-        setFamilies(updatedFamilies);
-    } catch (e) {
-        console.error(e);
-        setError('Failed to import families.');
-    } finally {
-        setIsLoading(false);
-    }
-  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
-
-  const handleImportContributions = async (year: number, month: string, upaBial: string, data: any[]) => {
-    if (isDataEntryLocked) {
-      throw new Error("Cannot import contributions for locked years.");
-    }
-    try {
-        const result = await api.importContributions(year, month, upaBial, data);
-        if (year === selectedYear && month === selectedMonth && upaBial === selectedUpaBial) {
-             const updatedFamilies = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
-             setFamilies(updatedFamilies);
-        }
-        return result;
-    } catch (e: any) {
-        console.error('Failed to import contributions:', e);
-        throw e;
-    }
-  };
-
   const handleTitheChange = useCallback(async (familyId: string, category: TitheCategory, value: number) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    
-    const updatedFamilies = families.map(f => {
-        if (f.id === familyId) {
-            return { ...f, tithe: { ...f.tithe, [category]: value } };
-        }
-        return f;
-    });
-    setFamilies(updatedFamilies);
-    
+    setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, tithe: { ...f.tithe, [category]: value } } : f));
     await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, category, value);
-  }, [selectedYear, selectedMonth, selectedUpaBial, families, isDataEntryLocked]);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
   
   const handleRemoveFamily = useCallback(async (familyId: string, year: number) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
+    if (isDataEntryLocked) return;
+    setFamilies(prev => prev.filter(f => f.id !== familyId));
     await api.removeFamily(familyId, year);
-  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
+  }, [isDataEntryLocked]);
 
   const handleUnassignFamily = useCallback(async (familyId: string) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    setFamilies(prevFamilies => prevFamilies.filter(f => f.id !== familyId));
+    if (isDataEntryLocked) return;
+    setFamilies(prev => prev.filter(f => f.id !== familyId));
     await api.unassignFamilyFromBial(familyId);
-  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
-
-  const handleBulkRemoveFamilies = useCallback(async (familyIds: string[]) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    setIsLoading(true);
-    try {
-        await api.bulkRemoveFamilies(familyIds, selectedYear);
-        setFamilies(prev => prev.filter(f => !familyIds.includes(f.id)));
-    } catch (e: any) {
-        setError(e.message || 'Failed to remove selected families.');
-    } finally {
-        setIsLoading(false);
-    }
-  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
-
-  const handleUpdateFamilyName = useCallback(async (familyId: string, name: string) => {
-    if (name.trim() === '' || !selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    const trimmedName = name.trim();
-    setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, name: trimmedName } : f));
-    await api.updateFamilyDetails(familyId, { name: trimmedName });
-  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
-
-  const handleUpdateIpSerialNo = useCallback(async (familyId: string, newSerial: number | null) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, ipSerialNo: newSerial } : f));
-    await api.updateFamilyDetails(familyId, { ipSerialNo: newSerial });
-  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
+  }, [isDataEntryLocked]);
 
   const handleOpenTitheModal = (family: FamilyWithTithe) => setFamilyForModal(family);
   const handleCloseTitheModal = () => setFamilyForModal(null);
 
   const handleSaveTitheModal = useCallback(async (familyId: string, newTithe: Tithe) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    setFamilies(prevFamilies => prevFamilies.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f));
+    setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, tithe: newTithe } : f));
+    await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
     handleCloseTitheModal();
   }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
-  const handleClearTithe = useCallback(async (familyId: string) => {
-    if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
-    const newTithe: Tithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
-    setFamilies(prev => prev.map(f => (f.id === familyId ? { ...f, tithe: newTithe } : f)));
-    await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, newTithe);
-  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
-
-  const handleOpenTransferModalFromFamily = useCallback((family: Family) => {
-    setFamilyToTransfer(family);
-  }, []);
-
-  const handleOpenTransferModalFromFamilyWithTithe = useCallback(async (familyWithTithe: FamilyWithTithe) => {
-    setIsLoading(true); 
-    setError(null);
-    try {
-        const fullFamily = await api.fetchFamilyById(familyWithTithe.id);
-        if (fullFamily) {
-            setFamilyToTransfer(fullFamily);
-        } else {
-            setError(`Could not find complete family data for "${familyWithTithe.name}".`);
-        }
-    } catch (e: any) {
-        setError(`Error fetching family data for transfer: ${e.message}`);
-        console.error(e);
-    } finally {
-        setIsLoading(false);
-    }
-  }, []);
-
-  const handleCloseTransferModal = () => {
-    setFamilyToTransfer(null);
-    setError(null);
-  }
-
   const handleTransferFamily = useCallback(async (familyId: string, destinationBial: string) => {
-    if (isDataEntryLocked) return; 
-
-    setError(null);
     setIsLoading(true);
     try {
         await api.transferFamily(familyId, destinationBial);
-        if (selectedUpaBial === familyToTransfer?.currentBial) {
+        if (selectedUpaBial && selectedUpaBial !== destinationBial) {
             setFamilies(prev => prev.filter(f => f.id !== familyId));
         }
-        handleCloseTransferModal();
-        alert(`Family has been successfully transferred to ${destinationBial}.`);
+        setFamilyToTransfer(null);
     } catch (e: any) {
-        setError(e.message || 'Failed to transfer family.');
+        alert('Transfer failed.');
     } finally {
         setIsLoading(false);
     }
-  }, [isDataEntryLocked, selectedUpaBial, familyToTransfer]); 
-  
-  const handleBackFromTitheTable = useCallback(() => {
-    setSelectedMonth(null);
-    setSearchTerm('');
-    setSortBy(null); 
-    setSortOrder('asc'); 
-  }, []);
+  }, [selectedUpaBial]);
 
-  const handleViewFamilyReport = useCallback((family: {id: string, name: string}) => {
-    if (selectedYear) {
-        setFamilyForReport(family);
-        setView('familyReport');
-    }
-  }, [selectedYear]);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'decimal' }).format(value);
-  };
-  
   const handleSort = (criteria: 'name' | 'serial') => {
     if (sortBy === criteria) {
         setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
@@ -469,388 +228,98 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   };
 
-  const sortedFamilies = useMemo(() => {
-    let currentFamilies = [...families]; 
-
+  const filteredFamilies = useMemo(() => {
+    let result = families.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
     if (sortBy === 'name') {
-        currentFamilies.sort((a, b) => {
-            const nameA = a.name.toLowerCase();
-            const nameB = b.name.toLowerCase();
-            if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
-            if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
-            return 0;
-        });
+        result.sort((a, b) => sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
     } else if (sortBy === 'serial') {
-        currentFamilies.sort((a, b) => {
-            const serialA = a.ipSerialNo ?? Infinity; 
-            const serialB = b.ipSerialNo ?? Infinity;
-
-            if (serialA !== serialB) {
-                return sortOrder === 'asc' ? serialA - serialB : serialB - serialA;
-            }
-            const nameA = a.name.toLowerCase();
-            const nameB = b.name.toLowerCase();
-            if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
-            if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
-            return 0;
-        });
+        result.sort((a, b) => sortOrder === 'asc' ? (a.ipSerialNo ?? 9999) - (b.ipSerialNo ?? 9999) : (b.ipSerialNo ?? 9999) - (a.ipSerialNo ?? 9999));
     }
-    return currentFamilies;
-  }, [families, sortBy, sortOrder]);
-
-  const filteredAndSortedFamilies = useMemo(() => {
-    const familiesToFilter = sortedFamilies; 
-
-    if (!searchTerm) {
-        return familiesToFilter;
-    }
-    return familiesToFilter.filter(family =>
-        family.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [sortedFamilies, searchTerm]);
-
-
-  const handleExportBialExcel = () => {
-        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredAndSortedFamilies.length === 0) return;
-
-        const headerData = [
-            [`${selectedUpaBial} Pathian Ram Thawhlawm`],
-            [`${selectedMonth} ${selectedYear}`],
-        ];
-        if (currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0) {
-            const vawngtuNames = currentBialInfo.vawngtu.map(v => v.name).join(', ');
-            headerData.push([`Bial Vawngtu: ${vawngtuNames}`]);
-        }
-        headerData.push([]);
-
-        const worksheet = utils.aoa_to_sheet(headerData);
-
-        const dataToExport = filteredAndSortedFamilies.map(family => ({
-            'S/N': family.ipSerialNo ?? 'N/A',
-            'Chhungkua': family.name,
-            'Pathian Ram': family.tithe.pathianRam,
-            'Ramthar': family.tithe.ramthar,
-            'Tualchhung': family.tithe.tualchhung,
-            'Total': family.tithe.pathianRam + family.tithe.ramthar + family.tithe.tualchhung,
-        }));
-        
-        const totals = filteredAndSortedFamilies.reduce((acc, f) => {
-            acc.pathianRam += f.tithe.pathianRam;
-            acc.ramthar += f.tithe.ramthar;
-            acc.tualchhung += f.tithe.tualchhung;
-            acc.total += f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung;
-            return acc;
-        }, { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 });
-
-        const footer = {
-            'S/N': '',
-            'Chhungkua': 'Grand Total',
-            'Pathian Ram': totals.pathianRam,
-            'Ramthar': totals.ramthar,
-            'Tualchhung': totals.tualchhung,
-            'Total': totals.total,
-        };
-        
-        utils.sheet_add_json(worksheet, dataToExport, { origin: -1, skipHeader: false });
-        utils.sheet_add_json(worksheet, [footer], { skipHeader: true, origin: -1 });
-
-        const workbook = utils.book_new();
-        utils.book_append_sheet(workbook, worksheet, "Tithe Details");
-
-        writeFile(workbook, `Tithe_Details_${selectedUpaBial.replace(/ /g, '_')}_${selectedMonth}_${selectedYear}.xlsx`);
-    };
-
-    const handleExportBialPdf = () => {
-        if (!selectedYear || !selectedMonth || !selectedUpaBial || filteredAndSortedFamilies.length === 0) return;
-
-        const doc = new jsPDF();
-        const vawngtuText = (currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0)
-            ? ` (Vawngtu: ${currentBialInfo.vawngtu.map(v => v.name).join(', ')} )`
-            : '';
-        const title = `${selectedUpaBial.replace('Upa ', '')} Pathian Ram${vawngtuText}`;
-        autoTable(doc, {
-            body: [[title], [`${selectedMonth} ${selectedYear}`]],
-            theme: 'plain',
-            styles: { fontSize: 12, halign: 'center' },
-        });
-
-        const head = [['S/N', 'Chhungkua', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Total']];
-        const body = filteredAndSortedFamilies.map(f => [
-            f.ipSerialNo ?? 'N/A',
-            f.name,
-            formatCurrency(f.tithe.pathianRam),
-            formatCurrency(f.tithe.ramthar),
-            formatCurrency(f.tithe.tualchhung),
-            formatCurrency(f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung),
-        ]);
-
-        const totals = filteredAndSortedFamilies.reduce((acc, f) => {
-            acc.pathianRam += f.tithe.pathianRam;
-            acc.ramthar += f.tithe.ramthar;
-            acc.tualchhung += f.tithe.tualchhung;
-            acc.total += f.tithe.pathianRam + f.tithe.ramthar + f.tithe.tualchhung;
-            return acc;
-        }, { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 });
-
-        const foot = [[
-            '',
-            'Grand Total',
-            formatCurrency(totals.pathianRam),
-            formatCurrency(totals.ramthar),
-            formatCurrency(totals.tualchhung),
-            formatCurrency(totals.total),
-        ]];
-        
-        autoTable(doc, {
-            head,
-            body,
-            foot,
-            startY: (doc as any).lastAutoTable.finalY + 2,
-            headStyles: { fillColor: [241, 245, 249], textColor: [48, 63, 84], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 },
-            footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 },
-            styles: { halign: 'right', lineColor: [203, 213, 225], lineWidth: 0.1 },
-            columnStyles: { 
-                0: { halign: 'left', cellWidth: 15 },
-                1: { halign: 'left' }
-            },
-        });
-
-        const monthAbbreviation = selectedMonth.substring(0, 3);
-        const fileName = `PathianRam_${selectedUpaBial.replace(/ /g, '_')}_${selectedMonth}_${selectedYear}.pdf`;
-        doc.save(fileName);
-    };
+    return result;
+  }, [families, searchTerm, sortBy, sortOrder]);
 
   const renderContent = () => {
-    if (error && !familyToTransfer) {
-        return <div className="text-center p-8 bg-red-100 text-red-700 rounded-lg">{error}</div>
-    }
-    
-    if (view === 'report') {
-        if (isLoading) return <LoadingSpinner message="Generating Monthly Report..." />;
-        if (monthlyReportData && selectedYear && selectedMonth) {
-            return <AggregateReport 
-                      data={monthlyReportData}
-                      upaBials={upaBials}
-                      month={selectedMonth}
-                      year={selectedYear}
-                      onBack={() => setView('entry')}
-                      onGoToDashboard={clearSelections}
-                    />;
-        }
-        return null;
-    }
+    if (view === 'report' && monthlyReportData) return <AggregateReport data={monthlyReportData} upaBials={upaBials} month={selectedMonth!} year={selectedYear!} onBack={() => setView('entry')} onGoToDashboard={clearSelections} />;
+    if (view === 'yearlyReport' && yearlyReportData) return <YearlyReport data={yearlyReportData} upaBials={upaBials} year={selectedYear!} onBack={() => setView('entry')} onGoToDashboard={clearSelections} />;
+    if (view === 'familyReport' && familyForReport) return <FamilyYearlyReport familyId={familyForReport.id} year={selectedYear!} onBack={() => setView('entry')} onGoToDashboard={clearSelections} />;
+    if (view === 'bialYearlyReport') return <BialYearlyFamilyReport year={selectedYear!} upaBial={selectedUpaBial!} onBack={() => setView('entry')} onGoToDashboard={clearSelections} />;
+    if (view === 'userManagement') return <UserManagement currentUser={user} upaBials={currentYearBials} onBack={() => setView('entry')} onGoToDashboard={clearSelections} />;
+    if (view === 'upaBialSettings') return <UpaBialSettings onBack={() => setView('entry')} onGoToDashboard={clearSelections} currentYear={currentYear} years={YEARS} />;
+    if (view === 'allFamiliesManagement') return <AllFamiliesManagement onBack={() => setView('entry')} onGoToDashboard={clearSelections} upaBials={currentYearBials} currentYear={currentYear} onOpenTransferModal={setFamilyToTransfer} />;
 
-    if (view === 'yearlyReport') {
-        if (isLoading) return <LoadingSpinner message="Generating Yearly Report..." />;
-        if (yearlyReportData && selectedYear) {
-            return <YearlyReport
-                      data={yearlyReportData}
-                      upaBials={upaBials}
-                      year={selectedYear}
-                      onBack={() => setView('entry')}
-                      onGoToDashboard={clearSelections}
-                    />;
-        }
-        return null;
-    }
-
-    if (view === 'familyReport') {
-        if (familyForReport && selectedYear) {
-            return <FamilyYearlyReport
-                      familyId={familyForReport.id}
-                      year={selectedYear}
-                      onBack={() => { setView('entry'); setFamilyForReport(null); }}
-                      onGoToDashboard={clearSelections}
-                    />;
-        }
-        return null;
-    }
-
-    if (view === 'bialYearlyReport') {
-        if (selectedYear && selectedUpaBial) {
-            return <BialYearlyFamilyReport
-                      year={selectedYear}
-                      upaBial={selectedUpaBial}
-                      onBack={() => setView('entry')}
-                      onGoToDashboard={clearSelections}
-                    />;
-        }
-        return null;
-    }
-    
-    if (view === 'userManagement') {
-        return <UserManagement 
-                    currentUser={user}
-                    upaBials={currentYearBials}
-                    onBack={() => setView('entry')}
-                    onGoToDashboard={clearSelections}
-                />
-    }
-    
-    if (view === 'upaBialSettings') {
-        return <UpaBialSettings
-                    onBack={() => setView('entry')}
-                    onGoToDashboard={clearSelections}
-                    currentYear={currentYear} 
-                    years={YEARS} 
-                />
-    }
-
-    if (view === 'allFamiliesManagement') { 
-        return <AllFamiliesManagement
-                    onBack={() => setView('entry')}
-                    onGoToDashboard={clearSelections}
-                    upaBials={currentYearBials} 
-                    currentYear={currentYear} 
-                    onOpenTransferModal={handleOpenTransferModalFromFamily} 
-                />
-    }
-
-    if (!selectedYear) {
-        return <YearSelection 
-                    years={YEARS} 
-                    onSelectYear={setSelectedYear} 
-                />;
-    }
-
-    if (isAdmin && !selectedUpaBial) {
-        if (isLoadingBials) return <LoadingSpinner message={`Loading Bials for ${selectedYear}...`} />;
-        return <UpaBialSelection 
-                    upaBials={upaBials}
-                    onSelectBial={setSelectedUpaBial}
-                    onBack={() => setSelectedYear(null)}
-                    onGoToDashboard={clearSelections}
-                />;
-    }
-
-    if (!selectedMonth) {
-         return <MonthSelection 
-                    months={MONTHS} 
-                    year={selectedYear} 
-                    currentYear={currentYear}
-                    onSelectMonth={setSelectedMonth} 
-                    onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)}
-                    onGoToDashboard={clearSelections}
-                    onOpenImportModal={() => setIsImportContributionsModalOpen(true)}
-                    isDataEntryLocked={isDataEntryLocked} 
-                />;
-    }
+    if (!selectedYear) return <YearSelection years={YEARS} onSelectYear={setSelectedYear} />;
+    if (isAdmin && !selectedUpaBial) return <UpaBialSelection upaBials={upaBials} onSelectBial={setSelectedUpaBial} onBack={() => setSelectedYear(null)} onGoToDashboard={clearSelections} />;
+    if (!selectedMonth) return <MonthSelection months={MONTHS} year={selectedYear} currentYear={currentYear} onSelectMonth={setSelectedMonth} onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)} onGoToDashboard={clearSelections} onOpenImportModal={() => setIsImportContributionsModalOpen(true)} isDataEntryLocked={isDataEntryLocked} />;
 
     return (
         <div className="printable-area">
-            <div className="hidden print:block text-center mb-4">
-                <h1 className="text-xl font-bold">{selectedUpaBial} - {selectedMonth} {selectedYear}</h1>
-                <h2 className="text-lg">Pathian Ram Thawhlawm</h2>
-            </div>
-
-            <div className="mb-8 p-4 bg-sky-200/50 border border-sky-200 rounded-lg no-print">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="flex-grow">
-                        <h3 className="text-xl font-bold text-slate-800">
-                            {selectedUpaBial} &ndash; {selectedMonth} {selectedYear}
-                        </h3>
-                        {currentBialInfo?.vawngtu && currentBialInfo.vawngtu.length > 0 && (
-                            <p className="text-slate-600">Bial Vawngtu: <strong>{currentBialInfo.vawngtu.map(v => v.name).join(', ')}</strong></p>
-                        )}
-                        <p className="text-slate-600 mt-1">A hnuai ah hian chhungkaw tin te thawhlawm chhunglut rawh le.</p>
-                        {isDataEntryLocked && (
-                            <p className="mt-2 text-sm text-amber-700 font-semibold">
-                                Note: Data for {selectedYear} is {selectedYear < currentYear ? 'archived (past year)' : 'explicitly archived'} and cannot be modified.
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
-                        <button
-                            onClick={handleBackFromTitheTable}
-                            className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 transition-colors text-sm"
-                            aria-label="Back to Month Selection"
-                        >
-                            &larr; Back
-                        </button>
-                    </div>
+            <div className="mb-8 p-4 bg-sky-200/50 border border-sky-200 rounded-lg no-print flex justify-between items-center">
+                <div>
+                    <h3 className="text-xl font-bold text-slate-800">{selectedUpaBial} &ndash; {selectedMonth} {selectedYear}</h3>
+                    <p className="text-slate-600">Thawhlawm chhunluhna</p>
                 </div>
+                <button onClick={() => setSelectedMonth(null)} className="bg-slate-200 text-slate-800 px-4 py-2 rounded-lg hover:bg-slate-300">Back</button>
             </div>
-
-            <div className="flex flex-col-reverse md:flex-row gap-6 mb-4 no-print">
-                <div className="flex-grow">
-                    <AddFamilyForm onAddFamily={handleAddFamily} isDisabled={isDataEntryLocked} />
-                </div>
-                 <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2">
-                    <ImportFamilies onImport={handleImportFamilies} isDisabled={isDataEntryLocked} />
-                    <button
-                        type="button"
-                        onClick={() => setIsImportContributionsModalOpen(true)}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
-                        disabled={isDataEntryLocked}
-                    >
-                        <UploadIcon className="w-5 h-5" />
-                        Import Contributions
-                    </button>
-                </div>
+            <div className="flex flex-col md:flex-row gap-4 mb-6 no-print">
+                <AddFamilyForm onAddFamily={handleAddFamily} isDisabled={isDataEntryLocked} />
+                <button onClick={() => setIsImportContributionsModalOpen(true)} className="bg-teal-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-teal-700 disabled:bg-slate-400" disabled={isDataEntryLocked}><UploadIcon className="w-5 h-5"/> Import</button>
             </div>
-
-            {families.length > 0 && (
-                <>
-                    <div className="mb-4 no-print">
-                        <SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-4 no-print">
-                        <button
-                            onClick={() => handleSort('serial')}
-                            className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
-                                        ${sortBy === 'serial' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'}`}
-                        >
-                            Sort by S/N
-                            {sortBy === 'serial' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                        </button>
-                        <button
-                            onClick={() => handleSort('name')}
-                            className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
-                                        ${sortBy === 'name' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'}`}
-                        >
-                            Sort by Name
-                            {sortBy === 'name' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                        </button>
-                    </div>
-                </>
-            )}
-
+            <div className="mb-4 no-print"><SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} /></div>
+            <div className="flex gap-2 mb-4 no-print">
+                <button onClick={() => handleSort('serial')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${sortBy === 'serial' ? 'bg-amber-600 text-white' : 'bg-slate-200'}`}>Sort by S/N {sortBy === 'serial' && (sortOrder === 'asc' ? '↑' : '↓')}</button>
+                <button onClick={() => handleSort('name')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${sortBy === 'name' ? 'bg-amber-600 text-white' : 'bg-slate-200'}`}>Sort by Name {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}</button>
+            </div>
             <TitheTable
-                families={filteredAndSortedFamilies}
+                families={filteredFamilies}
                 isLoading={isLoading}
                 onTitheChange={handleTitheChange}
                 onRemoveFamily={handleRemoveFamily}
-                onUnassignFamily={handleUnassignFamily} 
-                onBulkRemoveFamilies={handleBulkRemoveFamilies} 
-                onUpdateFamilyName={handleUpdateFamilyName}
-                onUpdateIpSerialNo={handleUpdateIpSerialNo}
+                onUnassignFamily={handleUnassignFamily}
+                onBulkRemoveFamilies={() => {}}
+                onUpdateFamilyName={api.updateFamilyDetails}
+                onUpdateIpSerialNo={(id, s) => api.updateFamilyDetails(id, { ipSerialNo: s })}
                 onOpenTitheModal={handleOpenTitheModal}
-                onOpenTransferModal={handleOpenTransferModalFromFamilyWithTithe}
-                onClearTithe={handleClearTithe}
-                onViewFamilyReport={handleViewFamilyReport}
+                onOpenTransferModal={async (f) => { const full = await api.fetchFamilyById(f.id); if (full) setFamilyToTransfer(full); }}
+                onClearTithe={id => api.updateTithe(selectedYear!, selectedMonth!, selectedUpaBial!, id, { pathianRam: 0, ramthar: 0, tualchhung: 0 })}
+                onViewFamilyReport={f => { setFamilyForReport(f); setView('familyReport'); }}
                 currentYear={currentYear}
-                selectedYear={selectedYear}
+                selectedYear={selectedYear!}
                 isDataEntryLocked={isDataEntryLocked}
             />
-
-            {filteredAndSortedFamilies.length > 0 && (
-                <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4 no-print">
-                    <span className="text-slate-600 text-sm">Export current view:</span>
-                    <button
-                        onClick={handleExportBialExcel}
-                        className="flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
-                    >
-                        <ExportIcon className="w-5 h-5" /> Excel
-                    </button>
-                    <button
-                        onClick={handleExportBialPdf}
-                        className="flex items-center gap-2 bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
-                    >
-                        <PdfIcon className="w-5 h-5" /> PDF
-                    </button>
-                </div>
-            )}
+            <div className="mt-8 flex justify-center gap-4 no-print">
+                 <button onClick={() => setView('report')} className="bg-sky-600 text-white px-6 py-2 rounded-lg hover:bg-sky-700">Monthly Report</button>
+                 <button onClick={() => setView('bialYearlyReport')} className="bg-sky-600 text-white px-6 py-2 rounded-lg hover:bg-sky-700">Bial Yearly Report</button>
+            </div>
         </div>
     );
   };
-}
+
+  return (
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 min-h-screen flex flex-col">
+        <Header onLogoClick={clearSelections} />
+        <main className="mt-8 mb-24 flex-grow">
+            {renderContent()}
+        </main>
+        <footer className="mt-12 text-center text-slate-500 text-sm no-print border-t border-slate-200 pt-8 pb-12">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-4">
+                <span>Logged in as: <strong>{user.email}</strong> ({isAdmin ? 'Admin' : assignedBial})</span>
+                <div className="flex gap-2">
+                     {isAdmin && (
+                        <>
+                            <button onClick={() => setView('userManagement')} className="text-amber-600 hover:underline">Users</button>
+                            <button onClick={() => setView('upaBialSettings')} className="text-amber-600 hover:underline">Bials</button>
+                            <button onClick={() => setView('allFamiliesManagement')} className="text-amber-600 hover:underline">Families</button>
+                        </>
+                    )}
+                    <button onClick={onLogout} className="bg-slate-200 px-3 py-1 rounded hover:bg-slate-300">Logout</button>
+                </div>
+            </div>
+            <InstallPWAButton />
+        </footer>
+
+        {familyForModal && <TitheModal family={familyForModal} onClose={handleCloseTitheModal} onSave={handleSaveTitheModal} isYearLocked={isDataEntryLocked} />}
+        {familyToTransfer && <TransferFamilyModal family={familyToTransfer} upaBials={currentYearBials} onClose={() => setFamilyToTransfer(null)} onTransfer={handleTransferFamily} isYearLocked={false} />}
+        {isImportContributionsModalOpen && <ImportContributionsModal year={selectedYear || currentYear} upaBials={upaBials} selectedBial={assignedBial} onClose={() => setIsImportContributionsModalOpen(false)} onImport={api.importContributions} isYearLocked={isDataEntryLocked} />}
+    </div>
+  );
+};
