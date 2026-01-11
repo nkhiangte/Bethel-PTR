@@ -1,6 +1,7 @@
 
 // Fix: import firebase compat for types and serverTimestamp
 import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import { db } from './firebase.ts';
 import type { Family, Tithe, TitheCategory, AggregateReportData, FamilyYearlyTitheData, YearlyFamilyTotal, FamilyWithTithe, UserDoc, BialInfo, ArchiveStatus } from './types.ts';
@@ -236,7 +237,6 @@ export const addFamily = async (year: number, month: string, upaBial: string, na
     });
 
     // 2. Create an initial 0-value tithe log for the specific year/month.
-    // This ensures the family appears in the list for that year even if it's a future year (where we rely on logs).
     const logRef = getTitheLogRef(year, month, newFamilyRef.id);
     batch.set(logRef, {
         year,
@@ -425,32 +425,55 @@ export const updateFamilyDetails = async (familyId: string, data: { name?: strin
 
 export const removeFamily = async (familyId: string, year: number): Promise<void> => {
     const batch = db.batch();
+    const currentYearNum = new Date().getFullYear();
     
-    // IMPORTANT: To ensure independence between years, this function ONLY deletes 
-    // the tithe logs for the specified year. It does NOT touch the global `currentBial` 
-    // field on the family document. To update `currentBial`, use `unassignFamilyFromBial`.
-
+    // 1. Delete all tithe logs for this specific year for this family
     const logsQuery = db.collection('titheLogs').where('familyId', '==', familyId).where('year', '==', year);
     const logsSnapshot = await logsQuery.get();
     logsSnapshot.forEach(logDoc => {
         batch.delete(logDoc.ref);
     });
 
+    // 2. IMPORTANT: If this is the current year, also unassign the family from their current Bial 
+    // so they disappear from the active data entry list.
+    if (year === currentYearNum) {
+        batch.update(db.collection('families').doc(familyId), { currentBial: null });
+    }
+
     await batch.commit();
 };
 
 export const bulkRemoveFamilies = async (familyIds: string[], year: number): Promise<void> => {
-    const chunkSize = 10;
+    const currentYearNum = new Date().getFullYear();
+    const chunkSize = 50; 
+    
     for (let i = 0; i < familyIds.length; i += chunkSize) {
         const chunk = familyIds.slice(i, i + chunkSize);
-        await Promise.all(chunk.map(id => removeFamily(id, year)));
+        const batch = db.batch();
+        
+        // Fetch all logs for this year for all families in the chunk
+        const logsSnapshot = await db.collection('titheLogs')
+            .where('year', '==', year)
+            .where('familyId', 'in', chunk)
+            .get();
+            
+        logsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        // If current year, also unassign from Bial
+        if (year === currentYearNum) {
+            chunk.forEach(id => {
+                batch.update(db.collection('families').doc(id), { currentBial: null });
+            });
+        }
+        
+        await batch.commit();
     }
 };
 
 export const removeAllFamiliesFromBial = async (year: number, bialName: string): Promise<void> => {
     // IMPORTANT: Only delete tithe logs to preserve independence between years.
-    // Do NOT unset currentBial.
-
     const logsQuery = db.collection('titheLogs')
         .where('year', '==', year)
         .where('upaBial', '==', bialName);
@@ -480,8 +503,6 @@ export const transferFamily = async (familyId: string, destinationUpaBial: strin
     await familyRef.update({ currentBial: destinationUpaBial });
 };
 
-// New API function for unassigning a family from their current Bial globally
-// This is the function that actually removes them from the "Active" list (current year fallback).
 export const unassignFamilyFromBial = async (familyId: string): Promise<void> => {
     const familyRef = db.collection('families').doc(familyId);
     await familyRef.update({ currentBial: null });
@@ -576,7 +597,6 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
     const logsRef = db.collection('titheLogs');
     const currentYear = new Date().getFullYear();
 
-    // 1. Find all familyIds that made contributions to this 'upaBial' in the given 'year'
     const logsQuery = logsRef.where('year', '==', year).where('upaBial', '==', upaBial);
     const logsSnapshot = await logsQuery.get();
 
@@ -594,7 +614,6 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
         aggregatedTithes[familyId].tualchhung += tithe.tualchhung;
     });
 
-    // 2. If it's the current year, also include families whose currentBial matches
     if (year === currentYear) {
         const currentBialFamiliesQuery = familiesRef.where('currentBial', '==', upaBial);
         const currentBialFamiliesSnapshot = await currentBialFamiliesQuery.get();
@@ -612,7 +631,6 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
         return [];
     }
 
-    // 3. Fetch full family documents
     const familiesDocs: Family[] = [];
     const chunks: string[][] = [];
     for (let i = 0; i < uniqueFamilyIds.length; i += 10) {
@@ -626,7 +644,6 @@ export const fetchBialYearlyFamilyData = async (year: number, upaBial: string): 
         });
     }
 
-    // 4. Combine family info with aggregated tithes
     const reportData = familiesDocs.map(family => {
         const totalTithe = aggregatedTithes[family.id] || { pathianRam: 0, ramthar: 0, tualchhung: 0 };
         return {

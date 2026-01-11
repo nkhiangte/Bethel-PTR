@@ -56,7 +56,6 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisa
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        // Use header: 1 to get raw rows as arrays
         const jsonData: any[][] = utils.sheet_to_json(worksheet, { header: 1, defval: null });
         
         if (jsonData.length === 0) {
@@ -67,14 +66,11 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisa
         const familiesToImport: FamilyImportData[] = [];
         const firstRow = (jsonData[0] || []).map(h => String(h || '').toLowerCase());
         
-        // Look for recognizable headers
         let nameColIndex = firstRow.findIndex(h => h.includes('name') || h.includes('chhungkua') || h.includes('hming'));
         let serialColIndex = firstRow.findIndex(h => h.includes('sl') || h.includes('s/n') || h.includes('serial'));
 
-        // If no headers found, assume first column is Name
         if (nameColIndex === -1) nameColIndex = 0;
 
-        // Skip the header row ONLY if the first row actually looks like a header
         const looksLikeHeader = firstRow[0].includes('name') || firstRow[0].includes('hming') || firstRow[0].includes('chhungkua') || firstRow[0].includes('s/n') || firstRow[0].includes('serial');
         const startRow = looksLikeHeader ? 1 : 0;
 
