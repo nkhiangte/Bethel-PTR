@@ -29,11 +29,11 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisa
 
   const downloadTemplate = () => {
     const templateData = [
-      ["Family Name"],
-      ["Lalbiakliana"],
-      ["Zonunsanga"],
-      ["Rochungnunga"],
-      ["Laltanpuia"]
+      ["S/N", "Family Name"],
+      [101, "Lalbiakliana"],
+      [102, "Zonunsanga"],
+      [103, "Rochungnunga"],
+      [104, "Laltanpuia"]
     ];
     const ws = utils.aoa_to_sheet(templateData);
     const wb = utils.book_new();
@@ -75,7 +75,7 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisa
         if (nameColIndex === -1) nameColIndex = 0;
 
         // Skip the header row ONLY if the first row actually looks like a header
-        const looksLikeHeader = firstRow[0].includes('name') || firstRow[0].includes('hming') || firstRow[0].includes('chhungkua');
+        const looksLikeHeader = firstRow[0].includes('name') || firstRow[0].includes('hming') || firstRow[0].includes('chhungkua') || firstRow[0].includes('s/n') || firstRow[0].includes('serial');
         const startRow = looksLikeHeader ? 1 : 0;
 
         for (let i = startRow; i < jsonData.length; i++) {
@@ -112,7 +112,7 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisa
         type="button"
         onClick={downloadTemplate}
         className="flex items-center justify-center gap-2 bg-slate-200 text-slate-700 font-semibold px-4 py-3 rounded-lg hover:bg-slate-300 focus:outline-none transition-all text-sm shadow-sm"
-        title="Download Name Only Template"
+        title="Download Template (S/N & Name)"
       >
         <DownloadIcon className="w-4 h-4" />
         Template
