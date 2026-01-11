@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
@@ -180,9 +179,14 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     if (!selectedYear || !selectedUpaBial || isDataEntryLocked) return;
     setIsLoading(true);
     try {
-        const { added, skipped } = await api.importFamilies(selectedYear, selectedUpaBial, familiesToImport);
-        let message = `${added} families imported!`;
-        if (skipped > 0) message += ` ${skipped} skipped (exists).`;
+        const { added, skipped, reactivated } = await api.importFamilies(selectedYear, selectedUpaBial, familiesToImport);
+        let message = '';
+        if (added > 0) message += `${added} new families added. `;
+        if (reactivated > 0) message += `${reactivated} previously unassigned families reactivated. `;
+        if (skipped > 0) message += `${skipped} families skipped (already in this Bial).`;
+        
+        if (!message) message = 'No changes made.';
+        
         onResult(message);
         if (selectedMonth) {
             const updated = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
@@ -321,7 +325,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 onRemoveFamily={handleRemoveFamily}
                 onUnassignFamily={handleUnassignFamily}
                 onBulkRemoveFamilies={handleBulkRemoveFamilies}
-                onUpdateFamilyName={api.updateFamilyDetails}
+                onUpdateFamilyName={(id, name) => api.updateFamilyDetails(id, { name })}
                 onUpdateIpSerialNo={(id, s) => api.updateFamilyDetails(id, { ipSerialNo: s })}
                 onOpenTitheModal={handleOpenTitheModal}
                 onOpenTransferModal={async (f) => { const full = await api.fetchFamilyById(f.id); if (full) setFamilyToTransfer(full); }}
@@ -340,31 +344,79 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 min-h-screen flex flex-col">
+    <div className="min-h-screen bg-sky-50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-slate-900">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8 no-print">
+            <div className="flex items-center gap-4">
+                 {user.displayName && <span className="text-slate-600 font-medium hidden sm:inline">Hello, {user.displayName}</span>}
+                 {user.isAdmin && <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold">Admin</span>}
+            </div>
+            <div className="flex items-center gap-2">
+                 {user.isAdmin && (
+                    <div className="hidden md:flex gap-2">
+                        <button onClick={() => setView('userManagement')} className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors">Users</button>
+                        <button onClick={() => setView('upaBialSettings')} className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors">Bials</button>
+                         <button onClick={() => setView('allFamiliesManagement')} className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors">Families</button>
+                    </div>
+                 )}
+                <InstallPWAButton />
+                <button onClick={onLogout} className="bg-slate-800 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors shadow-sm">Logout</button>
+            </div>
+        </div>
+        
+        {/* Mobile Admin Menu */}
+        {user.isAdmin && (
+             <div className="md:hidden flex flex-wrap justify-end gap-2 mb-4 no-print">
+                <button onClick={() => setView('userManagement')} className="text-xs text-slate-600 bg-slate-200 px-2 py-1 rounded hover:bg-slate-300">Users</button>
+                <button onClick={() => setView('upaBialSettings')} className="text-xs text-slate-600 bg-slate-200 px-2 py-1 rounded hover:bg-slate-300">Bials</button>
+                <button onClick={() => setView('allFamiliesManagement')} className="text-xs text-slate-600 bg-slate-200 px-2 py-1 rounded hover:bg-slate-300">Families</button>
+            </div>
+        )}
+
         <Header onLogoClick={clearSelections} />
-        <main className="mt-8 mb-24 flex-grow">
+
+        <main className="mt-8">
+            {error && (
+                <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span className="block sm:inline">{error}</span>
+                    <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
+                        <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                    </span>
+                </div>
+            )}
             {renderContent()}
         </main>
-        <footer className="mt-12 text-center text-slate-500 text-sm no-print border-t border-slate-200 pt-8 pb-12">
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-4">
-                <span>Logged in as: <strong>{user.email}</strong> ({isAdmin ? 'Admin' : assignedBial})</span>
-                <div className="flex gap-2">
-                     {isAdmin && (
-                        <>
-                            <button onClick={() => setView('userManagement')} className="text-amber-600 hover:underline">Users</button>
-                            <button onClick={() => setView('upaBialSettings')} className="text-amber-600 hover:underline">Bials</button>
-                            <button onClick={() => setView('allFamiliesManagement')} className="text-amber-600 hover:underline">Families</button>
-                        </>
-                    )}
-                    <button onClick={onLogout} className="bg-slate-200 px-3 py-1 rounded hover:bg-slate-300">Logout</button>
-                </div>
-            </div>
-            <InstallPWAButton />
-        </footer>
 
-        {familyForModal && <TitheModal family={familyForModal} onClose={handleCloseTitheModal} onSave={handleSaveTitheModal} isYearLocked={isDataEntryLocked} />}
-        {familyToTransfer && <TransferFamilyModal family={familyToTransfer} upaBials={currentYearBials} onClose={() => setFamilyToTransfer(null)} onTransfer={handleTransferFamily} isYearLocked={false} />}
-        {isImportContributionsModalOpen && <ImportContributionsModal year={selectedYear || currentYear} upaBials={upaBials} selectedBial={assignedBial} onClose={() => setIsImportContributionsModalOpen(false)} onImport={api.importContributions} isYearLocked={isDataEntryLocked} />}
+        {familyForModal && (
+            <TitheModal 
+                family={familyForModal} 
+                onClose={handleCloseTitheModal} 
+                onSave={handleSaveTitheModal} 
+                isYearLocked={isDataEntryLocked}
+            />
+        )}
+        
+        {familyToTransfer && (
+             <TransferFamilyModal 
+                family={familyToTransfer} 
+                upaBials={currentYearBials}
+                onClose={() => setFamilyToTransfer(null)} 
+                onTransfer={handleTransferFamily}
+                isYearLocked={isDataEntryLocked} 
+            />
+        )}
+
+        {isImportContributionsModalOpen && selectedYear && (
+             <ImportContributionsModal
+                year={selectedYear}
+                upaBials={upaBials}
+                selectedBial={isAdmin ? null : (selectedUpaBial || null)}
+                onClose={() => setIsImportContributionsModalOpen(false)}
+                onImport={api.importContributions}
+                isYearLocked={isDataEntryLocked}
+             />
+        )}
+      </div>
     </div>
   );
 };

@@ -218,6 +218,27 @@ export const fetchFamilyById = async (familyId: string): Promise<Family | null> 
 
 export const addFamily = async (year: number, month: string, upaBial: string, name: string): Promise<void> => {
     const trimmedName = name.trim();
+    // Check globally unassigned families first to reuse
+    const unassignedQuery = db.collection('families').where('name', '==', trimmedName).where('currentBial', '==', null);
+    const unassignedSnap = await unassignedQuery.get();
+    
+    if (!unassignedSnap.empty) {
+         // Reuse existing unassigned family
+         const doc = unassignedSnap.docs[0];
+         await doc.ref.update({ currentBial: upaBial });
+         // Create initial log
+         const logRef = getTitheLogRef(year, month, doc.id);
+         await logRef.set({
+            year,
+            month,
+            familyId: doc.id,
+            upaBial,
+            tithe: { pathianRam: 0, ramthar: 0, tualchhung: 0 },
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+         });
+         return;
+    }
+
     const q = db.collection('families').where('name', '==', trimmedName).where('currentBial', '==', upaBial);
     const existing = await q.get();
 
@@ -250,14 +271,22 @@ export const addFamily = async (year: number, month: string, upaBial: string, na
     await batch.commit();
 };
 
-export const importFamilies = async (year: number, upaBial: string, familiesToImport: { name: string; ipSerialNo: number | null }[]): Promise<{added: number, skipped: number}> => {
+export const importFamilies = async (year: number, upaBial: string, familiesToImport: { name: string; ipSerialNo: number | null }[]): Promise<{added: number, skipped: number, reactivated: number}> => {
     const batch = db.batch();
     const familiesRef = db.collection('families');
     
-    const q = familiesRef.where('currentBial', '==', upaBial);
-    const snapshot = await q.get();
-    const existingNames = new Set(snapshot.docs.map(d => d.data().name.trim().toLowerCase()));
+    // 1. Fetch assigned families in this Bial to avoid duplicates
+    const assignedSnap = await familiesRef.where('currentBial', '==', upaBial).get();
+    const assignedMap = new Set(assignedSnap.docs.map(d => d.data().name.trim().toLowerCase()));
+
+    // 2. Fetch ALL unassigned families to reuse them if names match
+    const unassignedSnap = await familiesRef.where('currentBial', '==', null).get();
+    const unassignedMap = new Map<string, firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>>();
+    unassignedSnap.forEach(doc => {
+        unassignedMap.set(doc.data().name.trim().toLowerCase(), doc);
+    });
     
+    // Deduplicate import list
     const uniqueFamiliesFromFile = new Map<string, { name: string; ipSerialNo: number | null }>();
     for (const family of familiesToImport) {
         const trimmedName = family.name.trim();
@@ -267,30 +296,42 @@ export const importFamilies = async (year: number, upaBial: string, familiesToIm
     }
     
     let addedCount = 0;
-    let skippedCount = familiesToImport.length - uniqueFamiliesFromFile.size;
+    let skippedCount = 0;
+    let reactivatedCount = 0;
 
     for (const family of uniqueFamiliesFromFile.values()) {
-        const trimmedName = family.name.trim();
-        if (existingNames.has(trimmedName.toLowerCase())) {
+        const nameKey = family.name.trim().toLowerCase();
+        
+        if (assignedMap.has(nameKey)) {
             skippedCount++;
+        } else if (unassignedMap.has(nameKey)) {
+            // Reactivate existing unassigned family
+            const doc = unassignedMap.get(nameKey)!;
+            batch.update(doc.ref, {
+                currentBial: upaBial,
+                ipSerialNo: family.ipSerialNo,
+            });
+            reactivatedCount++;
+            // Remove from map to handle duplicates within the logic if needed (though uniqueFamiliesFromFile handles file dups)
+            unassignedMap.delete(nameKey);
         } else {
+            // Create new
             const newFamilyRef = familiesRef.doc();
             batch.set(newFamilyRef, {
-                name: trimmedName,
+                name: family.name.trim(),
                 currentBial: upaBial,
                 ipSerialNo: family.ipSerialNo, 
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             });
             addedCount++;
-            existingNames.add(trimmedName.toLowerCase());
         }
     }
 
-    if (addedCount > 0) {
+    if (addedCount > 0 || reactivatedCount > 0) {
         await batch.commit();
     }
     
-    return { added: addedCount, skipped: skippedCount };
+    return { added: addedCount, skipped: skippedCount, reactivated: reactivatedCount };
 };
 
 export const importContributions = async (
@@ -314,19 +355,30 @@ export const importContributions = async (
         }
     });
 
+    // Check unassigned families for reuse if not found in current bial
+    const unassignedQuery = db.collection('families').where('currentBial', '==', null);
+    const unassignedSnap = await unassignedQuery.get();
+    const unassignedByName = new Map<string, Family>();
+    unassignedSnap.docs.forEach(d => {
+         const family = { id: d.id, ...d.data() } as Family;
+         unassignedByName.set(family.name.trim().toLowerCase(), family);
+    });
+
     let updatedCount = 0;    let createdCount = 0;
     const skippedRecords: { name: string, reason: string }[] = [];
     const processedNames = new Set<string>();
 
     for (const record of contributionsToImport) {
         const trimmedName = record.name.trim();
-        if (!trimmedName || processedNames.has(trimmedName.toLowerCase())) {
-             if (trimmedName && processedNames.has(trimmedName.toLowerCase())) {
+        const nameKey = trimmedName.toLowerCase();
+        
+        if (!trimmedName || processedNames.has(nameKey)) {
+             if (trimmedName && processedNames.has(nameKey)) {
                 skippedRecords.push({ name: trimmedName, reason: "Duplicate entry in the import file." });
             }
             continue;
         }
-        processedNames.add(trimmedName.toLowerCase());
+        processedNames.add(nameKey);
 
         let familyToUpdate: Family | undefined = undefined;
 
@@ -334,7 +386,7 @@ export const importContributions = async (
             familyToUpdate = familiesBySerial.get(record.ipSerialNo);
         }
         if (!familyToUpdate) {
-            familyToUpdate = familiesByName.get(trimmedName.toLowerCase());
+            familyToUpdate = familiesByName.get(nameKey);
         }
 
         if (familyToUpdate) {
@@ -349,21 +401,37 @@ export const importContributions = async (
             });
             updatedCount++;
         } else {
-            const familiesRef = db.collection('families');
-            const newFamilyRef = familiesRef.doc();
+            // Check if unassigned exists to reuse
+            const unassignedFamily = unassignedByName.get(nameKey);
             
-            batch.set(newFamilyRef, {
-                name: trimmedName,
-                currentBial: upaBial,
-                ipSerialNo: record.ipSerialNo,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            });
+            let targetFamilyId: string;
+            
+            if (unassignedFamily) {
+                // Reuse unassigned
+                targetFamilyId = unassignedFamily.id;
+                batch.update(db.collection('families').doc(targetFamilyId), {
+                    currentBial: upaBial,
+                    ipSerialNo: record.ipSerialNo // Update serial if provided
+                });
+                // Remove from map to prevent double usage
+                unassignedByName.delete(nameKey);
+            } else {
+                // Create new
+                const newFamilyRef = db.collection('families').doc();
+                targetFamilyId = newFamilyRef.id;
+                batch.set(newFamilyRef, {
+                    name: trimmedName,
+                    currentBial: upaBial,
+                    ipSerialNo: record.ipSerialNo,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+            }
 
-            const logRef = getTitheLogRef(year, month, newFamilyRef.id);
+            const logRef = getTitheLogRef(year, month, targetFamilyId);
             batch.set(logRef, {
                 year,
                 month,
-                familyId: newFamilyRef.id,
+                familyId: targetFamilyId,
                 upaBial,
                 tithe: record.tithe,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
