@@ -513,7 +513,7 @@ export const removeFamily = async (familyId: string, year: number): Promise<void
 
 export const bulkRemoveFamilies = async (familyIds: string[], year: number): Promise<void> => {
     const currentYearNum = new Date().getFullYear();
-    const chunkSize = 50; 
+    const chunkSize = 10; // Reduced from 50 to 10 to comply with Firestore 'in' query limit
     
     for (let i = 0; i < familyIds.length; i += chunkSize) {
         const chunk = familyIds.slice(i, i + chunkSize);
@@ -541,7 +541,10 @@ export const bulkRemoveFamilies = async (familyIds: string[], year: number): Pro
 };
 
 export const removeAllFamiliesFromBial = async (year: number, bialName: string): Promise<void> => {
-    // IMPORTANT: Only delete tithe logs to preserve independence between years.
+    const currentYearNum = new Date().getFullYear();
+    const batchSizeLimit = 450; // Safety margin
+
+    // 1. Delete Tithe Logs
     const logsQuery = db.collection('titheLogs')
         .where('year', '==', year)
         .where('upaBial', '==', bialName);
@@ -554,7 +557,7 @@ export const removeAllFamiliesFromBial = async (year: number, bialName: string):
     logsSnap.forEach(doc => {
         currentLogBatch.delete(doc.ref);
         logOpCount++;
-        if (logOpCount >= 450) {
+        if (logOpCount >= batchSizeLimit) {
             logBatches.push(currentLogBatch.commit());
             currentLogBatch = db.batch();
             logOpCount = 0;
@@ -564,6 +567,31 @@ export const removeAllFamiliesFromBial = async (year: number, bialName: string):
         logBatches.push(currentLogBatch.commit());
     }
     await Promise.all(logBatches);
+
+    // 2. Unassign families if current year
+    // This fixes the issue where clearing families didn't actually remove them from the list view
+    if (year === currentYearNum) {
+        const familiesQuery = db.collection('families').where('currentBial', '==', bialName);
+        const familiesSnap = await familiesQuery.get();
+        
+        const famBatches = [];
+        let currentFamBatch = db.batch();
+        let famOpCount = 0;
+
+        familiesSnap.forEach(doc => {
+            currentFamBatch.update(doc.ref, { currentBial: null });
+            famOpCount++;
+            if (famOpCount >= batchSizeLimit) {
+                famBatches.push(currentFamBatch.commit());
+                currentFamBatch = db.batch();
+                famOpCount = 0;
+            }
+        });
+        if (famOpCount > 0) {
+            famBatches.push(currentFamBatch.commit());
+        }
+        await Promise.all(famBatches);
+    }
 };
 
 export const transferFamily = async (familyId: string, destinationUpaBial: string): Promise<void> => {
