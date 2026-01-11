@@ -176,6 +176,25 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
+  const handleImportFamilies = useCallback(async (familiesToImport: { name: string; ipSerialNo: number | null }[], onResult: (message: string) => void) => {
+    if (!selectedYear || !selectedUpaBial || isDataEntryLocked) return;
+    setIsLoading(true);
+    try {
+        const { added, skipped } = await api.importFamilies(selectedYear, selectedUpaBial, familiesToImport);
+        let message = `${added} families imported!`;
+        if (skipped > 0) message += ` ${skipped} skipped (exists).`;
+        onResult(message);
+        if (selectedMonth) {
+            const updated = await api.fetchFamilies(selectedYear, selectedMonth, selectedUpaBial);
+            setFamilies(updated);
+        }
+    } catch (e) {
+        alert('Import failed.');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
+
   const handleTitheChange = useCallback(async (familyId: string, category: TitheCategory, value: number) => {
     if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
     setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, tithe: { ...f.tithe, [category]: value } } : f));
@@ -187,6 +206,19 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setFamilies(prev => prev.filter(f => f.id !== familyId));
     await api.removeFamily(familyId, year);
   }, [isDataEntryLocked]);
+
+  const handleBulkRemoveFamilies = useCallback(async (familyIds: string[]) => {
+    if (!selectedYear || isDataEntryLocked) return;
+    setIsLoading(true);
+    try {
+        await api.bulkRemoveFamilies(familyIds, selectedYear);
+        setFamilies(prev => prev.filter(f => !familyIds.includes(f.id)));
+    } catch (e) {
+        alert('Failed to delete selected records.');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [selectedYear, isDataEntryLocked]);
 
   const handleUnassignFamily = useCallback(async (familyId: string) => {
     if (isDataEntryLocked) return;
@@ -260,10 +292,23 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 </div>
                 <button onClick={() => setSelectedMonth(null)} className="bg-slate-200 text-slate-800 px-4 py-2 rounded-lg hover:bg-slate-300">Back</button>
             </div>
-            <div className="flex flex-col md:flex-row gap-4 mb-6 no-print">
-                <AddFamilyForm onAddFamily={handleAddFamily} isDisabled={isDataEntryLocked} />
-                <button onClick={() => setIsImportContributionsModalOpen(true)} className="bg-teal-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-teal-700 disabled:bg-slate-400" disabled={isDataEntryLocked}><UploadIcon className="w-5 h-5"/> Import</button>
+            
+            <div className="flex flex-col-reverse md:flex-row gap-6 mb-6 no-print">
+                <div className="flex-grow">
+                    <AddFamilyForm onAddFamily={handleAddFamily} isDisabled={isDataEntryLocked} />
+                </div>
+                <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2">
+                    <ImportFamilies onImport={handleImportFamilies} isDisabled={isDataEntryLocked} />
+                    <button 
+                        onClick={() => setIsImportContributionsModalOpen(true)} 
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-teal-700 disabled:bg-slate-400" 
+                        disabled={isDataEntryLocked}
+                    >
+                        <UploadIcon className="w-5 h-5"/> Contributions
+                    </button>
+                </div>
             </div>
+
             <div className="mb-4 no-print"><SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} /></div>
             <div className="flex gap-2 mb-4 no-print">
                 <button onClick={() => handleSort('serial')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${sortBy === 'serial' ? 'bg-amber-600 text-white' : 'bg-slate-200'}`}>Sort by S/N {sortBy === 'serial' && (sortOrder === 'asc' ? '↑' : '↓')}</button>
@@ -275,7 +320,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 onTitheChange={handleTitheChange}
                 onRemoveFamily={handleRemoveFamily}
                 onUnassignFamily={handleUnassignFamily}
-                onBulkRemoveFamilies={() => {}}
+                onBulkRemoveFamilies={handleBulkRemoveFamilies}
                 onUpdateFamilyName={api.updateFamilyDetails}
                 onUpdateIpSerialNo={(id, s) => api.updateFamilyDetails(id, { ipSerialNo: s })}
                 onOpenTitheModal={handleOpenTitheModal}

@@ -1,8 +1,6 @@
 
-
-
 import React, { useRef } from 'react';
-import { read, utils } from 'xlsx';
+import { read, utils, writeFile } from 'xlsx';
 
 interface FamilyImportData {
   name: string;
@@ -11,22 +9,40 @@ interface FamilyImportData {
 
 interface ImportFamiliesProps {
   onImport: (families: FamilyImportData[], onResult: (message: string) => void) => void;
-  isDisabled: boolean; // New prop
+  isDisabled: boolean;
 }
 
 const ExcelIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M2 2h14v2H2V2zm0 4h14v2H2V6zm0 4h14v2H2v-2zm10 4H2v2h10v-2zm0 4H2v2h10v-2zm4-4h4v10h-4V12zm2 8.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" opacity="0"/>
         <path d="M21.17 3.25Q21.5 3.25 21.76 3.5 22 3.74 22 4.08V19.92Q22 20.26 21.76 20.5 21.5 20.75 21.17 20.75H2.83Q2.5 20.75 2.24 20.5 2 20.26 2 19.92V4.08Q2 3.74 2.24 3.5 2.5 3.25 2.83 3.25M12 5.75L15.25 12 12 18.25H9.75L13 12 9.75 5.75M16.25 18H19V16.25H16.25M5 18H7.75V16.25H5Z"/>
     </svg>
 );
 
+const DownloadIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+    </svg>
+);
 
 export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisabled }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const downloadTemplate = () => {
+    const templateData = [
+      ["Family Name"],
+      ["Lalbiakliana"],
+      ["Zonunsanga"],
+      ["Rochungnunga"],
+      ["Laltanpuia"]
+    ];
+    const ws = utils.aoa_to_sheet(templateData);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "Families");
+    writeFile(wb, "family_import_template.xlsx");
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isDisabled) return; // Prevent file processing if disabled
+    if (isDisabled) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -40,75 +56,84 @@ export const ImportFamilies: React.FC<ImportFamiliesProps> = ({ onImport, isDisa
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
+        // Use header: 1 to get raw rows as arrays
+        const jsonData: any[][] = utils.sheet_to_json(worksheet, { header: 1, defval: null });
+        
+        if (jsonData.length === 0) {
+            alert('The uploaded file is empty.');
+            return;
+        }
+
         const familiesToImport: FamilyImportData[] = [];
-        const range = utils.decode_range(worksheet['!ref'] || 'A1');
+        const firstRow = (jsonData[0] || []).map(h => String(h || '').toLowerCase());
+        
+        // Look for recognizable headers
+        let nameColIndex = firstRow.findIndex(h => h.includes('name') || h.includes('chhungkua') || h.includes('hming'));
+        let serialColIndex = firstRow.findIndex(h => h.includes('sl') || h.includes('s/n') || h.includes('serial'));
 
-        // Manually iterate over rows to ensure all are read
-        for (let R = range.s.r; R <= range.e.r; ++R) {
-            // Read S/N from column A (c: 0)
-            const serialCellRef = utils.encode_cell({ c: 0, r: R });
-            const serialCell = worksheet[serialCellRef];
-            const serialNo = serialCell && serialCell.v != null ? parseInt(String(serialCell.v), 10) : null;
+        // If no headers found, assume first column is Name
+        if (nameColIndex === -1) nameColIndex = 0;
 
-            // Read Name from column B (c: 1)
-            const nameCellRef = utils.encode_cell({ c: 1, r: R });
-            const nameCell = worksheet[nameCellRef];
-            const name = nameCell && nameCell.v != null ? String(nameCell.v).trim() : '';
+        // Skip the header row ONLY if the first row actually looks like a header
+        const looksLikeHeader = firstRow[0].includes('name') || firstRow[0].includes('hming') || firstRow[0].includes('chhungkua');
+        const startRow = looksLikeHeader ? 1 : 0;
 
-            // We only import rows that have a family name.
-            if (name) {
-                familiesToImport.push({
-                    name,
-                    ipSerialNo: (serialNo !== null && !isNaN(serialNo)) ? serialNo : null,
-                });
-            }
+        for (let i = startRow; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row || row.length === 0) continue;
+            
+            const name = row[nameColIndex] ? String(row[nameColIndex]).trim() : '';
+            if (!name) continue;
+
+            const serialNoRaw = serialColIndex !== -1 ? row[serialColIndex] : null;
+            const serialNo = (serialNoRaw !== null && !isNaN(parseInt(serialNoRaw, 10))) ? parseInt(serialNoRaw, 10) : null;
+
+            familiesToImport.push({ name, ipSerialNo: serialNo });
         }
         
         if (familiesToImport.length > 0) {
-            onImport(familiesToImport, (message) => {
-                alert(message);
-            });
+            onImport(familiesToImport, (message) => alert(message));
         } else {
-            alert('No valid family names found in the second column of the Excel sheet. Please ensure S/N is in the first column and Family Name is in the second.');
+            alert('No valid family names found. Please check your file.');
         }
 
       } catch (error) {
-        console.error("Error reading or parsing Excel file:", error);
-        alert('There was an error processing the Excel file. Please ensure it is a valid format, S/N is in the first column, and Family Name is in the second.');
+        console.error("Error processing file:", error);
+        alert('There was an error processing the file.');
       }
-      // Reset the input so user can select the same file again
-      if(fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if(fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const handleButtonClick = () => {
-    if (isDisabled) return; // Prevent click if disabled
-    fileInputRef.current?.click();
-  };
-
   return (
-    <div>
+    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={downloadTemplate}
+        className="flex items-center justify-center gap-2 bg-slate-200 text-slate-700 font-semibold px-4 py-3 rounded-lg hover:bg-slate-300 focus:outline-none transition-all text-sm shadow-sm"
+        title="Download Name Only Template"
+      >
+        <DownloadIcon className="w-4 h-4" />
+        Template
+      </button>
+      
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
         accept=".xlsx, .xls, .csv"
-        aria-hidden="true"
-        tabIndex={-1}
-        disabled={isDisabled} // Disable file input
+        disabled={isDisabled}
       />
       <button
         type="button"
-        onClick={handleButtonClick}
-        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 ease-in-out transform hover:scale-105 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed disabled:scale-100"
-        disabled={isDisabled} // Disable button
+        onClick={() => fileInputRef.current?.click()}
+        className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
+        disabled={isDisabled}
       >
         <ExcelIcon className="w-5 h-5" />
-        Import Families
+        Import Names
       </button>
     </div>
   );
