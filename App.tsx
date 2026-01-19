@@ -38,6 +38,18 @@ interface AppProps {
     onLogout: () => void;
 }
 
+// Helper to safely access localStorage
+const getStorageItem = <T,>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') return defaultValue;
+    const item = localStorage.getItem(key);
+    if (!item) return defaultValue;
+    try {
+        return JSON.parse(item);
+    } catch {
+        return defaultValue;
+    }
+};
+
 const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
         <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zM13 12.67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
@@ -64,9 +76,10 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [currentYearBials, setCurrentYearBials] = useState<string[]>([]);
   const [isLoadingBials, setIsLoadingBials] = useState(false);
   
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(assignedBial || null);
+  // Initialize state from localStorage where appropriate to persist across refreshes
+  const [selectedYear, setSelectedYear] = useState<number | null>(() => getStorageItem('selectedYear', null));
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(() => getStorageItem('selectedMonth', null));
+  const [selectedUpaBial, setSelectedUpaBial] = useState<string | null>(() => assignedBial || getStorageItem('selectedUpaBial', null));
   
   const [families, setFamilies] = useState<FamilyWithTithe[]>([]);
   const [monthlyReportData, setMonthlyReportData] = useState<AggregateReportData | null>(null);
@@ -76,7 +89,15 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
   const [familyToTransfer, setFamilyToTransfer] = useState<Family | null>(null); 
   const [familyForReport, setFamilyForReport] = useState<{id: string; name: string} | null>(null);
-  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'upaBialSettings' | 'allFamiliesManagement'>('entry'); 
+  
+  // View state: fallback to 'entry' if stored view depends on missing transient data (like reports)
+  const [view, setView] = useState<'entry' | 'report' | 'yearlyReport' | 'familyReport' | 'bialYearlyReport' | 'userManagement' | 'upaBialSettings' | 'allFamiliesManagement'>(() => {
+    const storedView = getStorageItem('currentView', 'entry');
+    const independentViews = ['entry', 'userManagement', 'upaBialSettings', 'allFamiliesManagement'];
+    // If the stored view requires data that isn't persisted (reports), revert to entry to avoid blank screens
+    if (independentViews.includes(storedView)) return storedView;
+    return 'entry';
+  });
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +108,34 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
   const [sortBy, setSortBy] = useState<'name' | 'serial' | null>(null); 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+
+  // Persist selections to localStorage
+  useEffect(() => {
+    if (selectedYear) localStorage.setItem('selectedYear', JSON.stringify(selectedYear));
+    else localStorage.removeItem('selectedYear');
+  }, [selectedYear]);
+
+  useEffect(() => {
+    if (selectedMonth) localStorage.setItem('selectedMonth', JSON.stringify(selectedMonth));
+    else localStorage.removeItem('selectedMonth');
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    if (selectedUpaBial) localStorage.setItem('selectedUpaBial', JSON.stringify(selectedUpaBial));
+    else localStorage.removeItem('selectedUpaBial');
+  }, [selectedUpaBial]);
+
+  useEffect(() => {
+    localStorage.setItem('currentView', JSON.stringify(view));
+  }, [view]);
+
+  // Ensure assignedBial is respected if user profile loads/changes
+  useEffect(() => {
+    if (assignedBial) {
+        setSelectedUpaBial(assignedBial);
+    }
+  }, [assignedBial]);
 
 
   const clearSelections = useCallback(() => {
@@ -104,6 +153,12 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     setIsYearExplicitlyArchived(false); 
     setSortBy(null); 
     setSortOrder('asc'); 
+
+    // Clear localStorage
+    localStorage.removeItem('selectedYear');
+    localStorage.removeItem('selectedMonth');
+    localStorage.removeItem('selectedUpaBial');
+    localStorage.removeItem('currentView');
   }, [assignedBial]);
 
   useEffect(() => {
@@ -254,6 +309,14 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
         setIsLoading(false);
     }
   }, [selectedUpaBial]);
+  
+  const handleClearTithe = useCallback(async (familyId: string) => {
+      if (!selectedYear || !selectedMonth || !selectedUpaBial || isDataEntryLocked) return;
+      
+      const zeroTithe = { pathianRam: 0, ramthar: 0, tualchhung: 0 };
+      setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, tithe: zeroTithe } : f));
+      await api.updateTithe(selectedYear, selectedMonth, selectedUpaBial, familyId, zeroTithe);
+  }, [selectedYear, selectedMonth, selectedUpaBial, isDataEntryLocked]);
 
   const handleSort = (criteria: 'name' | 'serial') => {
     if (sortBy === criteria) {
@@ -329,7 +392,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 onUpdateIpSerialNo={(id, s) => api.updateFamilyDetails(id, { ipSerialNo: s })}
                 onOpenTitheModal={handleOpenTitheModal}
                 onOpenTransferModal={async (f) => { const full = await api.fetchFamilyById(f.id); if (full) setFamilyToTransfer(full); }}
-                onClearTithe={id => api.updateTithe(selectedYear!, selectedMonth!, selectedUpaBial!, id, { pathianRam: 0, ramthar: 0, tualchhung: 0 })}
+                onClearTithe={handleClearTithe}
                 onViewFamilyReport={f => { setFamilyForReport(f); setView('familyReport'); }}
                 currentYear={currentYear}
                 selectedYear={selectedYear!}
@@ -344,77 +407,61 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-sky-50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-slate-900">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8 no-print">
-            <div className="flex items-center gap-4">
-                 {user.displayName && <span className="text-slate-600 font-medium hidden sm:inline">Hello, {user.displayName}</span>}
-                 {user.isAdmin && <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold">Admin</span>}
-            </div>
-            <div className="flex items-center gap-2">
-                 {user.isAdmin && (
-                    <div className="hidden md:flex gap-2">
-                        <button onClick={() => setView('userManagement')} className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors">Users</button>
-                        <button onClick={() => setView('upaBialSettings')} className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors">Bials</button>
-                         <button onClick={() => setView('allFamiliesManagement')} className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors">Families</button>
+    <div className="min-h-screen bg-sky-50 font-sans text-slate-900">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+         {/* Top bar with user info and logout */}
+        <div className="flex flex-col sm:flex-row justify-end items-center mb-4 no-print gap-4">
+             <div className="flex items-center gap-4 flex-wrap justify-center">
+                <span className="text-slate-600 font-medium text-sm sm:text-base">
+                    Hello, {user.displayName} {user.assignedBial ? `(${user.assignedBial})` : '(Admin)'}
+                </span>
+                
+                {isAdmin && (
+                    <div className="flex gap-2">
+                         <button onClick={() => setView('userManagement')} className="text-xs sm:text-sm bg-indigo-100 text-indigo-700 px-2 py-1 sm:px-3 sm:py-1 rounded hover:bg-indigo-200 transition-colors">Users</button>
+                         <button onClick={() => setView('upaBialSettings')} className="text-xs sm:text-sm bg-purple-100 text-purple-700 px-2 py-1 sm:px-3 sm:py-1 rounded hover:bg-purple-200 transition-colors">Settings</button>
+                         <button onClick={() => setView('allFamiliesManagement')} className="text-xs sm:text-sm bg-teal-100 text-teal-700 px-2 py-1 sm:px-3 sm:py-1 rounded hover:bg-teal-200 transition-colors">All Families</button>
                     </div>
-                 )}
-                <InstallPWAButton />
-                <button onClick={onLogout} className="bg-slate-800 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors shadow-sm">Logout</button>
-            </div>
+                )}
+                 <InstallPWAButton />
+                 <button onClick={onLogout} className="text-sm text-red-600 hover:text-red-800 underline">Logout</button>
+             </div>
         </div>
-        
-        {/* Mobile Admin Menu */}
-        {user.isAdmin && (
-             <div className="md:hidden flex flex-wrap justify-end gap-2 mb-4 no-print">
-                <button onClick={() => setView('userManagement')} className="text-xs text-slate-600 bg-slate-200 px-2 py-1 rounded hover:bg-slate-300">Users</button>
-                <button onClick={() => setView('upaBialSettings')} className="text-xs text-slate-600 bg-slate-200 px-2 py-1 rounded hover:bg-slate-300">Bials</button>
-                <button onClick={() => setView('allFamiliesManagement')} className="text-xs text-slate-600 bg-slate-200 px-2 py-1 rounded hover:bg-slate-300">Families</button>
-            </div>
-        )}
 
         <Header onLogoClick={clearSelections} />
-
+        
         <main className="mt-8">
-            {error && (
-                <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                    <span className="block sm:inline">{error}</span>
-                    <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
-                        <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
-                    </span>
-                </div>
-            )}
-            {renderContent()}
+             {renderContent()}
         </main>
 
-        {familyForModal && (
-            <TitheModal 
-                family={familyForModal} 
-                onClose={handleCloseTitheModal} 
-                onSave={handleSaveTitheModal} 
+         {familyForModal && (
+            <TitheModal
+                family={familyForModal}
+                onClose={handleCloseTitheModal}
+                onSave={handleSaveTitheModal}
                 isYearLocked={isDataEntryLocked}
             />
         )}
-        
+
         {familyToTransfer && (
-             <TransferFamilyModal 
-                family={familyToTransfer} 
-                upaBials={currentYearBials}
-                onClose={() => setFamilyToTransfer(null)} 
-                onTransfer={handleTransferFamily}
-                isYearLocked={isDataEntryLocked} 
+            <TransferFamilyModal
+               family={familyToTransfer}
+               upaBials={currentYearBials}
+               onClose={() => setFamilyToTransfer(null)}
+               onTransfer={handleTransferFamily}
+               isYearLocked={isDataEntryLocked}
             />
         )}
-
+        
         {isImportContributionsModalOpen && selectedYear && (
-             <ImportContributionsModal
+            <ImportContributionsModal
                 year={selectedYear}
-                upaBials={upaBials}
-                selectedBial={isAdmin ? null : (selectedUpaBial || null)}
+                upaBials={currentYearBials}
+                selectedBial={selectedUpaBial}
                 onClose={() => setIsImportContributionsModalOpen(false)}
                 onImport={api.importContributions}
                 isYearLocked={isDataEntryLocked}
-             />
+            />
         )}
       </div>
     </div>

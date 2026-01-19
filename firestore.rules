@@ -1,72 +1,108 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if a specific year is explicitly archived
-    function isYearArchived(yearId) {
-      return exists(/databases/$(database)/documents/settings/$(yearId)/archive/current) &&
-             get(/databases/$(database)/documents/settings/$(yearId)/archive/current).data.isArchived == true;
+    
+    // --- HELPER FUNCTIONS ---
+    
+    // Fetch the current user's document data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Check if the current user exists in the 'users' collection
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    
+    // Check if the current user is an Admin
+    function isAdmin() {
+      return request.auth != null && 
+             userExists() && 
+             getUserData().isAdmin == true;
+    }
+    
+    // Check if the current user is assigned to the specific Bial
+    function isAssignedToBial(bialName) {
+      return request.auth != null && 
+             userExists() && 
+             getUserData().assignedBial == bialName;
     }
 
-    // Allow anyone to read the Upa Bial list and other settings documents
-    // This is necessary for the registration page to display available Bials.
+    // Check if a specific year is explicitly marked as archived in settings
+    function isYearArchived(year) {
+      // Use string() casting instead of .toString()
+      let yearStr = string(year); 
+      let archivePath = /databases/$(database)/documents/settings/$(yearStr)/archive/current;
+      return exists(archivePath) && get(archivePath).data.isArchived == true;
+    }
+
+    // --- COLLECTION RULES ---
+
+    // Settings Collection
     match /settings/{yearId} {
       allow read: if true;
 
-      // Bial info subcollection (e.g., overseer details)
+      // Bial Info (Overseers)
       match /bialInfo/{bialName} {
         allow read: if true;
-        // Allow create, update, delete only if the year is not archived AND user is admin
-        allow create, update, delete: if request.auth != null && 
-                                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true &&
-                                      !isYearArchived(yearId);
+        allow write: if isAdmin() && !isYearArchived(yearId);
       }
       
-      // Archive status subcollection
+      // Archive Status
       match /archive/{statusId} {
-        allow read: if true; // Public read to determine UI state
-        // Only admins can create or update the archive status
-        allow create, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
-        allow delete: if false; // Archive status documents should not be deleted
+        allow read: if true;
+        allow write: if isAdmin();
       }
     }
 
-    // User documents:
-    // - Only the authenticated user can read/update their own document.
-    // - Only admin can list/create/delete users or update other users' roles.
+    // Users Collection
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId; // Allow users to create their own doc on first login/registration
-      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // Read: Users can read their own profile; Admins can read all.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // Create: Users can create their own profile upon registration.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Update: Users can update their own profile; Admins can update any profile (roles).
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // Delete/List: Only Admins.
+      allow delete, list: if isAdmin();
     }
     
-    // Families collection:
-    // - All authenticated users can read.
-    // - Only admins or assigned bial overseers can create, update, or delete families.
+    // Families Collection
     match /families/{familyId} {
-      allow read: if request.auth != null; // All authenticated users can read families
+      allow read: if request.auth != null;
       
-      // Allow create/update/delete based on currentBial and admin status.
-      // NOTE: This does NOT check `isYearArchived` for families because the family document
-      // represents a master record. If a family is active (currentBial != null), its
-      // name/serial should still be editable, even if it contributed in an archived year.
-      // The immutability of "names" is achieved by not allowing updates to *past* contribution logs.
-      allow create, update, delete: if request.auth != null && 
-                                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
-                                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBial == resource.data.currentBial);
+      // Create: Admin or User assigned to the new family's Bial
+      allow create: if isAdmin() || isAssignedToBial(request.resource.data.currentBial);
+
+      // Update: Admin OR User assigned to the OLD Bial OR User assigned to the NEW Bial
+      // This allows transferring families and claiming unassigned families (where resource.data.currentBial is null).
+      allow update: if isAdmin() || 
+                    (resource.data.currentBial != null && isAssignedToBial(resource.data.currentBial)) ||
+                    (request.resource.data.currentBial != null && isAssignedToBial(request.resource.data.currentBial));
+
+      // Delete: Admin or User assigned to the family's current Bial
+      allow delete: if isAdmin() || (resource.data.currentBial != null && isAssignedToBial(resource.data.currentBial));
     }
 
-    // Tithe Logs collection:
-    // - All authenticated users can read.
-    // - Only admins or assigned bial overseers can create, update, or delete tithe logs.
+    // Tithe Logs Collection
     match /titheLogs/{logId} {
       allow read: if request.auth != null;
       
-      // Allow create, update, delete only if the year for the log is NOT archived
-      allow create, update, delete: if request.auth != null && 
-                                      !isYearArchived(resource.data.year.toString()) && // Check archive status of the log's year
-                                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
-                                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBial == resource.data.upaBial);
+      // Create: Year must not be archived AND (Admin OR User assigned to target Bial)
+      allow create: if !isYearArchived(request.resource.data.year) && 
+                      (isAdmin() || isAssignedToBial(request.resource.data.upaBial));
+
+      // Update: Year must not be archived AND (Admin OR User assigned to target Bial)
+      allow update: if !isYearArchived(request.resource.data.year) && 
+                      (isAdmin() || isAssignedToBial(request.resource.data.upaBial));
+
+      // Delete: Year must not be archived AND (Admin OR User assigned to existing Bial)
+      allow delete: if !isYearArchived(resource.data.year) && 
+                      (isAdmin() || isAssignedToBial(resource.data.upaBial));
     }
   }
 }
