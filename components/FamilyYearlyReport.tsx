@@ -1,5 +1,5 @@
-
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as api from '../api.ts';
@@ -34,14 +34,18 @@ const PrintIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zM13 12.67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
+    </svg>
+);
+
 
 export const FamilyYearlyReport: React.FC<FamilyYearlyReportProps> = ({ familyId, year, onBack, onGoToDashboard }) => {
     const [reportData, setReportData] = useState<FamilyYearlyTitheData | null>(null);
     const [familyInfo, setFamilyInfo] = useState<{ name: string; ipSerialNo: number | null; } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
-    const actionsMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -60,23 +64,10 @@ export const FamilyYearlyReport: React.FC<FamilyYearlyReportProps> = ({ familyId
         fetchData();
     }, [year, familyId]);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
-                setIsActionsMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
-
     const totals = useMemo(() => {
         const acc = { pathianRam: 0, ramthar: 0, tualchhung: 0, grandTotal: 0 };
         if (!reportData) return acc;
 
-        // Fix: Explicitly type 'tithe' to avoid 'unknown' type error.
         Object.values(reportData).forEach((tithe: Tithe) => {
             acc.pathianRam += tithe.pathianRam;
             acc.ramthar += tithe.ramthar;
@@ -89,6 +80,45 @@ export const FamilyYearlyReport: React.FC<FamilyYearlyReportProps> = ({ familyId
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleExportExcel = () => {
+        if (!reportData || !familyInfo) return;
+
+        const headerData = [
+            [`Yearly Tithe Report for ${familyInfo.name}`],
+            [`Year: ${year}`],
+        ];
+        headerData.push([]);
+
+        const worksheet = utils.aoa_to_sheet(headerData);
+
+        const tableBody = MONTHS.map(month => {
+            const tithe = reportData[month] || { pathianRam: 0, ramthar: 0, tualchhung: 0 };
+            const total = tithe.pathianRam + tithe.ramthar + tithe.tualchhung;
+            return {
+                'Month': month,
+                'Pathian Ram': tithe.pathianRam,
+                'Ramthar': tithe.ramthar,
+                'Tualchhung': tithe.tualchhung,
+                'Monthly Total': total
+            };
+        });
+
+        const footer = {
+            'Month': 'Grand Total',
+            'Pathian Ram': totals.pathianRam,
+            'Ramthar': totals.ramthar,
+            'Tualchhung': totals.tualchhung,
+            'Monthly Total': totals.grandTotal
+        };
+
+        utils.sheet_add_json(worksheet, tableBody, { origin: -1, skipHeader: false });
+        utils.sheet_add_json(worksheet, [footer], { origin: -1, skipHeader: true });
+        
+        const workbook = utils.book_new();
+        utils.book_append_sheet(workbook, worksheet, "Family Report");
+        writeFile(workbook, `Tithe_Report_Chhungkua_${familyInfo.name.replace(/ /g, '_')}_${year}.xlsx`);
     };
 
     const handleExportPdf = () => {
@@ -153,10 +183,10 @@ export const FamilyYearlyReport: React.FC<FamilyYearlyReportProps> = ({ familyId
                         <span className="font-semibold">{familyInfo.name}</span> for the year {year}
                     </p>
                 </div>
-                 <div className="flex flex-wrap gap-4 no-print">
+                 <div className="flex flex-wrap gap-2 sm:gap-4 no-print items-center">
                     <button
                         onClick={onGoToDashboard}
-                        className="flex items-center gap-2 bg-slate-200 text-slate-800 font-semibold px-4 py-3 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all"
+                        className="flex items-center gap-2 bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all text-sm"
                     >
                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
@@ -165,35 +195,25 @@ export const FamilyYearlyReport: React.FC<FamilyYearlyReportProps> = ({ familyId
                     </button>
                     <button
                         onClick={onBack}
-                        className="bg-slate-200 text-slate-800 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all"
+                        className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all text-sm"
                     >
-                        &larr; Back to Data Entry
+                        &larr; Back
                     </button>
-                    <div className="relative" ref={actionsMenuRef}>
-                        <button
-                            onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
-                            className="flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all shadow-md"
-                        >
-                            <span>Actions</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isActionsMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                         {isActionsMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-56 bg-sky-50 rounded-lg shadow-xl z-20 border border-slate-200">
-                                <div className="py-1">
-                                    <button onClick={() => { handleExportPdf(); setIsActionsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-100 hover:text-slate-900 transition-colors">
-                                        <PdfIcon className="w-5 h-5 text-red-600" />
-                                        <span>Export to PDF</span>
-                                    </button>
-                                    <button onClick={() => { handlePrint(); setIsActionsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-100 hover:text-slate-900 transition-colors">
-                                        <PrintIcon className="w-5 h-5 text-blue-600" />
-                                        <span>Print</span>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    
+                    <div className="h-6 w-px bg-slate-300 mx-2 hidden sm:block"></div>
+
+                    <button onClick={handleExportExcel} className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 text-sm font-semibold shadow-sm transition-all" title="Export to Excel">
+                        <ExportIcon className="w-4 h-4" />
+                        <span>Excel</span>
+                    </button>
+                    <button onClick={handleExportPdf} className="flex items-center gap-2 bg-rose-600 text-white px-3 py-2 rounded-lg hover:bg-rose-700 text-sm font-semibold shadow-sm transition-all" title="Export to PDF">
+                        <PdfIcon className="w-4 h-4" />
+                        <span>PDF</span>
+                    </button>
+                    <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm font-semibold shadow-sm transition-all" title="Print Report">
+                        <PrintIcon className="w-4 h-4" />
+                        <span>Print</span>
+                    </button>
                  </div>
             </div>
             <div className="overflow-x-auto">
