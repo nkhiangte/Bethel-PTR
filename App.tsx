@@ -58,7 +58,7 @@ const ExportIcon: React.FC<{className?: string}> = ({ className }) => (
 
 const PdfIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2-H4V6z"/>
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-6.5-2H9v1.5h.5c.28 0 .5-.22.5-.5v-.5zm5 0h-1.5v1.5H15v-1c0-.28-.22-.5-.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/>
     </svg>
 );
 
@@ -388,8 +388,14 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 onRemoveFamily={handleRemoveFamily}
                 onUnassignFamily={handleUnassignFamily}
                 onBulkRemoveFamilies={handleBulkRemoveFamilies}
-                onUpdateFamilyName={(id, name) => api.updateFamilyDetails(id, { name })}
-                onUpdateIpSerialNo={(id, s) => api.updateFamilyDetails(id, { ipSerialNo: s })}
+                onUpdateFamilyName={(id, name) => {
+                    api.updateFamilyDetails(id, { name });
+                    setFamilies(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+                }}
+                onUpdateIpSerialNo={(id, s) => {
+                    api.updateFamilyDetails(id, { ipSerialNo: s });
+                    setFamilies(prev => prev.map(f => f.id === id ? { ...f, ipSerialNo: s } : f));
+                }}
                 onOpenTitheModal={handleOpenTitheModal}
                 onOpenTransferModal={async (f) => { const full = await api.fetchFamilyById(f.id); if (full) setFamilyToTransfer(full); }}
                 onClearTithe={handleClearTithe}

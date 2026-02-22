@@ -29,6 +29,24 @@ const UnassignIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const EditIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    </svg>
+);
+
+const SaveIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+    </svg>
+);
+
+const CancelIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+    </svg>
+);
+
 
 interface AllFamiliesManagementProps {
     onBack: () => void;
@@ -49,6 +67,10 @@ export const AllFamiliesManagement: React.FC<AllFamiliesManagementProps> = ({
     const [families, setFamilies] = useState<Family[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editedName, setEditedName] = useState('');
+    const [editedSerial, setEditedSerial] = useState('');
 
     const [sortBy, setSortBy] = useState<'name' | 'serial' | null>('serial'); // Default sort
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -142,6 +164,46 @@ export const AllFamiliesManagement: React.FC<AllFamiliesManagementProps> = ({
         }
     };
 
+    const handleEditClick = (family: Family) => {
+        setEditingId(family.id);
+        setEditedName(family.name);
+        setEditedSerial(family.ipSerialNo?.toString() ?? '');
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditedName('');
+        setEditedSerial('');
+    };
+
+    const handleSaveEdit = async (familyId: string) => {
+        const trimmedName = editedName.trim();
+        if (!trimmedName) {
+            alert("Name cannot be empty.");
+            return;
+        }
+
+        const newSerial = editedSerial.trim() === '' ? null : parseInt(editedSerial, 10);
+        if (isNaN(newSerial as number) && newSerial !== null) {
+            alert("Serial must be a valid number.");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await api.updateFamilyDetails(familyId, {
+                name: trimmedName,
+                ipSerialNo: newSerial
+            });
+            setEditingId(null);
+            fetchData();
+        } catch (e: any) {
+            setError("Failed to update family details.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -213,34 +275,85 @@ export const AllFamiliesManagement: React.FC<AllFamiliesManagementProps> = ({
                                 <tbody className="bg-sky-50 divide-y divide-slate-200">
                                     {sortedFamilies.map(family => (
                                         <tr key={family.id} className="hover:bg-sky-100 transition-colors duration-150">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{family.ipSerialNo ?? <span className="text-slate-400 italic">N/A</span>}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-800">{family.name}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                                                {editingId === family.id ? (
+                                                    <input 
+                                                        type="text" 
+                                                        value={editedSerial} 
+                                                        onChange={(e) => setEditedSerial(e.target.value.replace(/[^0-9]/g, ''))}
+                                                        className="w-20 bg-white border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
+                                                        placeholder="N/A"
+                                                    />
+                                                ) : (
+                                                    family.ipSerialNo ?? <span className="text-slate-400 italic">N/A</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-800">
+                                                {editingId === family.id ? (
+                                                    <input 
+                                                        type="text" 
+                                                        value={editedName} 
+                                                        onChange={(e) => setEditedName(e.target.value)}
+                                                        className="w-full max-w-xs bg-white border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-amber-500 outline-none"
+                                                    />
+                                                ) : (
+                                                    family.name
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">{family.currentBial || <span className="text-slate-400 italic">Not Assigned</span>}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <button 
-                                                        onClick={() => handleViewFamilyReport(family.id, family.name)} 
-                                                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors" 
-                                                        title="View Yearly Report"
-                                                    >
-                                                        <ReportIcon className="w-5 h-5" />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => onOpenTransferModal(family)} 
-                                                        className="p-2 text-cyan-600 hover:bg-cyan-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
-                                                        title="Transfer Family"
-                                                        disabled={!family.currentBial} // Only allow transfer if currently assigned
-                                                    >
-                                                        <TransferIcon className="w-5 h-5" />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleUnassignFamily(family.id, family.name)} 
-                                                        className="p-2 text-rose-600 hover:bg-rose-100 rounded-full transition-colors" 
-                                                        title="Unassign Family from Bial"
-                                                        disabled={!family.currentBial} // Only allow unassign if currently assigned
-                                                    >
-                                                        <UnassignIcon className="w-5 h-5" />
-                                                    </button>
+                                                    {editingId === family.id ? (
+                                                        <>
+                                                            <button 
+                                                                onClick={() => handleSaveEdit(family.id)} 
+                                                                className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors" 
+                                                                title="Save Changes"
+                                                            >
+                                                                <SaveIcon className="w-5 h-5" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={handleCancelEdit} 
+                                                                className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors" 
+                                                                title="Cancel Edit"
+                                                            >
+                                                                <CancelIcon className="w-5 h-5" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button 
+                                                                onClick={() => handleViewFamilyReport(family.id, family.name)} 
+                                                                className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors" 
+                                                                title="View Yearly Report"
+                                                            >
+                                                                <ReportIcon className="w-5 h-5" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleEditClick(family)} 
+                                                                className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" 
+                                                                title="Edit Family Info"
+                                                            >
+                                                                <EditIcon className="w-5 h-5" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => onOpenTransferModal(family)} 
+                                                                className="p-2 text-cyan-600 hover:bg-cyan-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                                                                title="Transfer Family"
+                                                                disabled={!family.currentBial} // Only allow transfer if currently assigned
+                                                            >
+                                                                <TransferIcon className="w-5 h-5" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleUnassignFamily(family.id, family.name)} 
+                                                                className="p-2 text-rose-600 hover:bg-rose-100 rounded-full transition-colors" 
+                                                                title="Unassign Family from Bial"
+                                                                disabled={!family.currentBial} // Only allow unassign if currently assigned
+                                                            >
+                                                                <UnassignIcon className="w-5 h-5" />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
