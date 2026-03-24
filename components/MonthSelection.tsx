@@ -123,30 +123,32 @@ export const MonthSelection: React.FC<MonthSelectionProps> = ({
         </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto">
         {months.map(month => (
-          <div key={month} className="relative group">
+          <div key={month} className="bg-sky-50 border border-slate-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col items-center overflow-hidden">
             <button
                 onClick={() => onSelectMonth(month)}
-                className="w-full h-full p-4 sm:p-6 bg-sky-50 border border-slate-200 rounded-xl shadow-sm hover:shadow-lg hover:border-amber-500 hover:text-amber-600 transition-all duration-200 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 flex flex-col items-center justify-center gap-2"
+                className="w-full p-4 sm:p-6 flex flex-col items-center justify-center gap-2 hover:text-amber-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-500"
             >
                 <span className="text-lg sm:text-xl font-semibold">{month}</span>
             </button>
             {isAdmin && (
-                <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="w-full border-t border-slate-100 flex divide-x divide-slate-100 no-print">
                     <button
-                        onClick={(e) => { e.stopPropagation(); onExportReport('monthly', 'excel', month); }}
+                        onClick={() => onExportReport('monthly', 'excel', month)}
                         disabled={isExporting}
-                        className="p-1.5 bg-white border border-green-200 rounded-md shadow-sm hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50"
+                        className="flex-1 py-2 flex items-center justify-center gap-1 text-[10px] sm:text-xs font-medium text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
                         title={`Export ${month} Excel`}
                     >
                         <ExportIcon className="w-4 h-4" />
+                        <span>Excel</span>
                     </button>
                     <button
-                        onClick={(e) => { e.stopPropagation(); onExportReport('monthly', 'pdf', month); }}
+                        onClick={() => onExportReport('monthly', 'pdf', month)}
                         disabled={isExporting}
-                        className="p-1.5 bg-white border border-red-200 rounded-md shadow-sm hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
+                        className="flex-1 py-2 flex items-center justify-center gap-1 text-[10px] sm:text-xs font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                         title={`Export ${month} PDF`}
                     >
                         <PdfIcon className="w-4 h-4" />
+                        <span>PDF</span>
                     </button>
                 </div>
             )}

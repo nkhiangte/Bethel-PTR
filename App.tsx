@@ -535,8 +535,28 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
                 selectedYear={selectedYear!}
                 isDataEntryLocked={isDataEntryLocked}
             />
-            <div className="mt-8 flex justify-center gap-4 no-print">
+            <div className="mt-8 flex flex-wrap justify-center gap-4 no-print">
                  <button onClick={() => setView('report')} className="bg-sky-600 text-white px-6 py-2 rounded-lg hover:bg-sky-700">Monthly Report</button>
+                 {isAdmin && (
+                     <>
+                        <button 
+                            onClick={() => handleExportReport('monthly', 'excel', selectedMonth!)} 
+                            disabled={isExporting}
+                            className="flex items-center gap-2 bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                        >
+                            <ExportIcon className="w-5 h-5" />
+                            <span>Monthly Excel</span>
+                        </button>
+                        <button 
+                            onClick={() => handleExportReport('monthly', 'pdf', selectedMonth!)} 
+                            disabled={isExporting}
+                            className="flex items-center gap-2 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                        >
+                            <PdfIcon className="w-5 h-5" />
+                            <span>Monthly PDF</span>
+                        </button>
+                     </>
+                 )}
                  <button onClick={() => setView('bialYearlyReport')} className="bg-sky-600 text-white px-6 py-2 rounded-lg hover:bg-sky-700">Bial Yearly Report</button>
             </div>
         </div>
