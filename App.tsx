@@ -84,6 +84,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
   const [families, setFamilies] = useState<FamilyWithTithe[]>([]);
   const [monthlyReportData, setMonthlyReportData] = useState<AggregateReportData | null>(null);
   const [yearlyReportData, setYearlyReportData] = useState<AggregateReportData | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [currentBialInfo, setCurrentBialInfo] = useState<BialInfo | null>(null);
   
   const [familyForModal, setFamilyForModal] = useState<FamilyWithTithe | null>(null);
@@ -137,6 +138,136 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
     }
   }, [assignedBial]);
 
+
+  useEffect(() => {
+    if (view === 'report' && selectedYear && selectedMonth) {
+      const fetchReport = async () => {
+        setIsLoading(true);
+        try {
+          const data = await api.fetchMonthlyReport(selectedYear, selectedMonth);
+          setMonthlyReportData(data);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchReport();
+    } else if (view === 'yearlyReport' && selectedYear) {
+      const fetchReport = async () => {
+        setIsLoading(true);
+        try {
+          const data = await api.fetchYearlyReport(selectedYear);
+          setYearlyReportData(data);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [view, selectedYear, selectedMonth]);
+
+  const handleExportReport = async (type: 'monthly' | 'yearly', format: 'excel' | 'pdf', month?: string) => {
+    if (!selectedYear) return;
+    setIsExporting(true);
+    try {
+        const data = type === 'monthly' 
+            ? await api.fetchMonthlyReport(selectedYear, month!) 
+            : await api.fetchYearlyReport(selectedYear);
+        
+        const bials = await api.fetchUpaBials(selectedYear);
+        const categories = {
+            pathianRam: "Pathian Ram",
+            ramthar: "Ramthar",
+            tualchhung: "Tualchhung"
+        };
+        const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'decimal' }).format(value);
+
+        const grandTotals = { pathianRam: 0, ramthar: 0, tualchhung: 0, total: 0 };
+        Object.values(data).forEach((bialData) => {
+            grandTotals.pathianRam += bialData.pathianRam;
+            grandTotals.ramthar += bialData.ramthar;
+            grandTotals.tualchhung += bialData.tualchhung;
+            grandTotals.total += bialData.pathianRam + bialData.ramthar + bialData.tualchhung;
+        });
+
+        if (format === 'excel') {
+            const header = ["Category", ...bials, "Grand Total"];
+            const rows = (Object.keys(categories) as (keyof typeof categories)[]).map(catKey => {
+                const rowData: (string | number)[] = [categories[catKey]];
+                let rowTotal = 0;
+                bials.forEach(bial => {
+                    const value = data[bial]?.[catKey] ?? 0;
+                    rowData.push(value);
+                    rowTotal += value;
+                });
+                rowData.push(rowTotal);
+                return rowData;
+            });
+
+            const footer: (string | number)[] = ["Total"];
+            let overallTotal = 0;
+            bials.forEach(bial => {
+                const total = data[bial]?.total ?? 0;
+                footer.push(total);
+                overallTotal += total;
+            });
+            footer.push(overallTotal);
+
+            const worksheetData = [header, ...rows, footer];
+            const worksheet = utils.aoa_to_sheet(worksheetData);
+            const workbook = utils.book_new();
+            utils.book_append_sheet(workbook, worksheet, type === 'monthly' ? "Monthly Report" : "Yearly Report");
+            const fileName = type === 'monthly' ? `Tithe_Report_${month}_${selectedYear}.xlsx` : `Tithe_Report_${selectedYear}.xlsx`;
+            writeFile(workbook, fileName);
+        } else {
+            const doc = new jsPDF({ orientation: 'landscape' });
+            autoTable(doc, {
+                body: [[`${type === 'monthly' ? 'Monthly' : 'Yearly'} Aggregate Report for ${type === 'monthly' ? month + ' ' : ''}${selectedYear}`]],
+                theme: 'plain',
+                styles: { fontSize: 16, halign: 'center' },
+            });
+
+            const head = [['Category', ...bials.map(b => b.replace('Upa Bial ', 'Bial ')), 'Grand Total']];
+            const body = (Object.keys(categories) as (keyof typeof categories)[]).map(catKey => {
+                const rowData: string[] = [categories[catKey]];
+                bials.forEach(bial => {
+                    rowData.push(formatCurrency(data[bial]?.[catKey] ?? 0));
+                });
+                rowData.push(formatCurrency(grandTotals[catKey]));
+                return rowData;
+            });
+
+            const foot = [[
+                'Total', 
+                ...bials.map(bial => formatCurrency(data[bial]?.total ?? 0)), 
+                formatCurrency(grandTotals.total)
+            ]];
+            
+            autoTable(doc, {
+                head: head,
+                body: body,
+                foot: foot,
+                startY: (doc as any).lastAutoTable?.finalY + 2 || 20,
+                headStyles: { fillColor: [241, 245, 249], textColor: [48, 63, 84], fontStyle: 'bold' },
+                footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold' },
+                styles: { halign: 'right', lineColor: [226, 232, 240], lineWidth: 0.1 },
+                columnStyles: { 0: { halign: 'left' } },
+                alternateRowStyles: { fillColor: [248, 250, 252] }
+            });
+
+            const fileName = type === 'monthly' ? `PathianRam_Report_Thla_${month}_${selectedYear}.pdf` : `PathianRam_Report_Kum_${selectedYear}.pdf`;
+            doc.save(fileName);
+        }
+    } catch (e) {
+        console.error("Export failed", e);
+        alert("Failed to export report.");
+    } finally {
+        setIsExporting(false);
+    }
+  };
 
   const clearSelections = useCallback(() => {
     setSelectedYear(null);
@@ -348,7 +479,7 @@ export const App: React.FC<AppProps> = ({ user, onLogout }) => {
 
     if (!selectedYear) return <YearSelection years={YEARS} onSelectYear={setSelectedYear} />;
     if (isAdmin && !selectedUpaBial) return <UpaBialSelection upaBials={upaBials} onSelectBial={setSelectedUpaBial} onBack={() => setSelectedYear(null)} onGoToDashboard={clearSelections} />;
-    if (!selectedMonth) return <MonthSelection months={MONTHS} year={selectedYear} currentYear={currentYear} onSelectMonth={setSelectedMonth} onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)} onGoToDashboard={clearSelections} onOpenImportModal={() => setIsImportContributionsModalOpen(true)} isDataEntryLocked={isDataEntryLocked} />;
+    if (!selectedMonth) return <MonthSelection months={MONTHS} year={selectedYear} currentYear={currentYear} onSelectMonth={setSelectedMonth} onBack={() => isAdmin ? setSelectedUpaBial(null) : setSelectedYear(null)} onGoToDashboard={clearSelections} onOpenImportModal={() => setIsImportContributionsModalOpen(true)} isDataEntryLocked={isDataEntryLocked} isAdmin={isAdmin} onExportReport={handleExportReport} onViewYearlyReport={() => setView('yearlyReport')} isExporting={isExporting} />;
 
     return (
         <div className="printable-area">
